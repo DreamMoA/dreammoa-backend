@@ -6,12 +6,12 @@ import lombok.Getter;
 @Getter
 public class UserTagResponseDto {
     private Long id;
-    private String name;
+    private String tagName;
     private Long userId;
 
     public UserTagResponseDto(UserTagEntity tag) {
         this.id = tag.getId();
-        this.name = tag.getName();
+        this.tagName = tag.getTagName();
         this.userId = tag.getUser().getId();
     }
 }

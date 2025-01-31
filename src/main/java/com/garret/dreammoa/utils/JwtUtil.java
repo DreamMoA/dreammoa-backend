@@ -33,7 +33,7 @@ public class JwtUtil {
     }
 
 
-    public String createAccessToken(Long userId, String email, String name, String nickname) {
+    public String createAccessToken(Long userId, String email, String name, String nickname, String role) {
         Date now = new Date();
         Date validity = new Date(now.getTime() + ACCESS_TOKEN_EXPIRE_TIME);
 
@@ -44,7 +44,8 @@ public class JwtUtil {
                 .addClaims(Map.of(
                         "name", name,
                         "nickname", nickname,
-                        "userId", String.valueOf(userId)
+                        "userId", String.valueOf(userId),
+                        "role", role
                 ))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
@@ -163,6 +164,20 @@ public class JwtUtil {
             return Long.parseLong(userIdStr);
         } catch (JwtException | NumberFormatException e) {
             log.error("유효하지 않은 JWT 토큰 또는 userId 변환 실패", e);
+            return null;
+        }
+    }
+
+    public String getRoleFromToken(String token) {
+        try {
+            return Jwts.parserBuilder()
+                    .setSigningKey(key) // ✅ 서명 키 설정
+                    .build()
+                    .parseClaimsJws(token) // ✅ 토큰 파싱
+                    .getBody()
+                    .get("role", String.class); // ✅ Role(권한) 반환
+        } catch (JwtException e) {
+            log.error("유효하지 않은 JWT 토큰", e);
             return null;
         }
     }

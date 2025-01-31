@@ -123,8 +123,9 @@ public class UserService {
         String email = jwtUtil.getEmailFromToken(accessToken);
         String name = jwtUtil.getNameFromToken(accessToken);
         String nickname = jwtUtil.getNicknameFromToken(accessToken);
+        String role = jwtUtil.getRoleFromToken(accessToken);
 
-        if (email == null || name == null || nickname == null || userId == null) {
+        if (email == null || name == null || nickname == null || userId == null || role == null) {
             throw new RuntimeException("토큰에서 유저 정보를 가져올 수 없습니다.");
         }
 
@@ -134,7 +135,7 @@ public class UserService {
         String profileUrl = profilePicture.map(FileEntity::getFileUrl).orElse(null);
 
         // 유저 정보 반환
-        return new UserResponse(email, name, nickname, profileUrl);
+        return new UserResponse(email, name, nickname, profileUrl, role);
     }
 
     public String findByEmailByNicknameAndName(String nickname, String name) {

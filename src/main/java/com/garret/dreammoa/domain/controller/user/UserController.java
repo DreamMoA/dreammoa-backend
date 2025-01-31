@@ -170,7 +170,7 @@ public class UserController {
 
     @PostMapping("/user-info")
     public ResponseEntity<?> userInfo(HttpServletRequest request) {
-        // 1. 쿠키에서 accessToken 가져오기
+        // 1. 쿠키에서 access_token 가져오기
         String accessToken = Arrays.stream(request.getCookies())
                 .filter(cookie -> "access_token".equals(cookie.getName()))
                 .map(Cookie::getValue)
@@ -182,10 +182,10 @@ public class UserController {
         }
 
         try {
-            // 2. Service를 통해 UserResponse DTO 추출
+            // 2. UserService를 통해 유저 정보 가져오기 (role 포함)
             UserResponse userInfo = userService.extractUserInfo(accessToken);
 
-            // 3. 유저 정보 반환
+            // 3. 유저 정보 반환 (role 포함)
             return ResponseEntity.ok(userInfo);
         } catch (Exception e) {
             return ResponseEntity.status(401).body(e.getMessage());

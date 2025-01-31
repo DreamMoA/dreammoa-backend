@@ -15,4 +15,5 @@ public class UserResponse {
     private String name;
     private String nickname;
     private String profilePictureUrl;
+    private String role;
 }

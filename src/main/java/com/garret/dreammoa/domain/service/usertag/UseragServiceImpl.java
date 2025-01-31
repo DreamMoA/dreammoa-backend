@@ -33,7 +33,7 @@ public class UseragServiceImpl implements UserTagService{
                 .orElseThrow(() -> new EntityNotFoundException("사용자 검색 실패"));
 
         UserTagEntity tag = UserTagEntity.builder()
-                .name(dto.getName())
+                .tagName(dto.getTagName())
                 .user(user)
                 .build();
 
