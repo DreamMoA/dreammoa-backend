@@ -118,7 +118,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/files/**").permitAll()
                         .requestMatchers("/admin").hasRole("ADMIN")
+                        //태그 설정들 추가함
+                        .requestMatchers(HttpMethod.GET, "/tags").permitAll()  // 전체 조회는 누구나 가능
+                        .requestMatchers(HttpMethod.GET, "/user-tag").authenticated()  // 본인 태그 조회는 로그인 필요
+                        .requestMatchers(HttpMethod.POST, "/user-tag").authenticated()  // 태그 추가는 로그인 필요
+                        .requestMatchers(HttpMethod.DELETE, "/user-tag/{tagId}").authenticated()  // 태그 삭제는 로그인 필요
                         .anyRequest().authenticated()
+
                 )
                 // 구글로그인설정
                 .oauth2Login(oauth2 -> oauth2
