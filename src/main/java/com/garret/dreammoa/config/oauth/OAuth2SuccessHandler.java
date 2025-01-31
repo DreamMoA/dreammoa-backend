@@ -49,7 +49,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                     .name(name) // Google에서 가져온 이름 설정
                     .nickname(name) // 기본 닉네임은 이름과 동일하게 설정
                     .password("GooglePassWord123!")
-                    .role(UserEntity.Role.USER) // 기본 역할 설정
+                    .role(UserEntity.Role.Google) // 기본 역할 설정
                     .build();
             return userRepository.save(newUser);
         });
