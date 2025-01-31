@@ -8,5 +8,5 @@ import lombok.Setter;
 @Setter
 public class UserTagRequestDto {
     @NotBlank
-    private String name; // 태그명은 안빈것만 일단 체크
+    private String tagName; // 태그명은 안빈것만 일단 체크
 }

@@ -19,7 +19,7 @@ public class UserTagEntity {
 
     // 관심사명
     @Column(nullable = false, length = 255)
-    private String name;
+    private String tagName;
 
     // 태그 등록한 사용자
     @ManyToOne(fetch = FetchType.LAZY)

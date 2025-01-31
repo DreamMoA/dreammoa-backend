@@ -74,7 +74,7 @@ public class UserTagController {
      * 관심사 태그 삭제 (자신이 추가한 태그만 가능)
      */
     @DeleteMapping("/user-tag/{tagId}")
-    public ResponseEntity<Void> deleteTag(@PathVariable Long tagId, HttpServletRequest request) {
+    public ResponseEntity<String> deleteTag(@PathVariable Long tagId, HttpServletRequest request) {
         String accessToken = getAccessTokenFromRequest(request);
         if (accessToken == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -86,7 +86,7 @@ public class UserTagController {
         }
 
         tagService.deleteTag(tagId, userId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok("삭제 완료되었습니다.");
     }
 
     // 쿠키정보가져오기
