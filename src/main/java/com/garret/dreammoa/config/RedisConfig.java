@@ -12,7 +12,7 @@ public class RedisConfig {
 
     @Bean
     public RedisConnectionFactory redisConnectionFactory() {
-        return new LettuceConnectionFactory("localhost", 6380); // Redis 호스트와 포트
+        return new LettuceConnectionFactory("dreammoa.duckdns.org", 6379); // Redis 호스트와 포트
     }
 
     @Bean
