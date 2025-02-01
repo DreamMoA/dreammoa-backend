@@ -61,7 +61,8 @@ public class JwtUtil {
                 .setIssuedAt(now) // 토큰 발행 시간
                 .setExpiration(validity) // 토큰 만료 시간
                 .addClaims(Map.of( // 사용자 ID를 추가로 저장
-                        "userId", user.getId().toString() // userId를 String으로 저장
+                        "userId", user.getId().toString(), // userId를 String으로 저장
+                        "role", user.getRole()
                 ))
                 .signWith(key, SignatureAlgorithm.HS256) // HMAC SHA-256으로 서명
                 .compact();

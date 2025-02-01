@@ -17,6 +17,7 @@ public class CustomUserDetails implements UserDetails {
     private final String password;
     private final String name;
     private final String nickname;
+    private final String role;
     private final LocalDateTime createdAt;
     private final LocalDateTime lastLogin;
     private final Collection<? extends GrantedAuthority> authorities;
@@ -29,7 +30,8 @@ public class CustomUserDetails implements UserDetails {
         this.nickname = user.getNickname();
         this.createdAt = user.getCreatedAt();
         this.lastLogin = user.getLastLogin();
-        this.authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+        this.role = user.getRole().name();
+        this.authorities = List.of(new SimpleGrantedAuthority("ROLE_" + this.role));
     }
 
     public static CustomUserDetails fromEntity(Optional<UserEntity> user) {

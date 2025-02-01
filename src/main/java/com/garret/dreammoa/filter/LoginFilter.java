@@ -67,7 +67,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         GrantedAuthority auth = iterator.next();
         
         // Access Token & Refresh Token 생성
-        String accessToken = jwtUtil.createAccessToken(userId, email, name, nickname);
+        String accessToken = jwtUtil.createAccessToken(userId, email, name, nickname, String.valueOf(role));
         String refreshToken = jwtUtil.createRefreshToken(user);
 
         // Response 헤더에 토큰 추가

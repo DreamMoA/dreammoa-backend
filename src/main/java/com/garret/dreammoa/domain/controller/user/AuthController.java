@@ -66,7 +66,8 @@ public class AuthController {
                 userDetails.getId(),
                 userDetails.getUsername(),
                 userDetails.getName(),
-                userDetails.getNickname()
+                userDetails.getNickname(),
+                userDetails.getRole()
         );
         String refreshToken = jwtUtil.createRefreshToken(userEntity);
         Long userId = userDetails.getId();
@@ -95,10 +96,11 @@ public class AuthController {
             String email = jwtUtil.getEmailFromToken(refreshToken);
             String name = jwtUtil.getNameFromToken(refreshToken);
             String nickname = jwtUtil.getNicknameFromToken(refreshToken);
+            String role = jwtUtil.getRoleFromToken(refreshToken);
 
             if (jwtUtil.isRefreshTokenValid(userId, refreshToken)) {
                 // 새로운 액세스 토큰 생성
-                String newAccessToken = jwtUtil.createAccessToken(userId, email, name, nickname);
+                String newAccessToken = jwtUtil.createAccessToken(userId, email, name, nickname, role);
 
                 // 쿠키에 저장
                 CookieUtil.addHttpOnlyCookie(response, "access_token", newAccessToken, (int) jwtUtil.getAccessTokenExpirationTime());
