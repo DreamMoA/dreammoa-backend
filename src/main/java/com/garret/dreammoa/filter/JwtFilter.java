@@ -4,6 +4,7 @@ import com.garret.dreammoa.domain.service.CustomUserDetailsService;
 import com.garret.dreammoa.utils.JwtUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
     private final String HEADER_AUTHORIZATION = "Authorization"; // HTTP Authorization 헤더
     private final String TOKEN_PREFIX = "Bearer "; // 토큰 접두사
+    private final String COOKIE_ACCESS_TOKEN = "access_token"; // 쿠키에서 사용할 토큰 키
 
     @Override
     protected void doFilterInternal(
@@ -51,10 +53,21 @@ public class JwtFilter extends OncePerRequestFilter {
 
 
     private String resolveToken(HttpServletRequest request) {
-        String bearerToken = request.getHeader(HEADER_AUTHORIZATION); // Authorization 헤더에서 토큰 추출
+        // 1. Authorization 헤더에서 토큰 추출
+        String bearerToken = request.getHeader(HEADER_AUTHORIZATION);
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(TOKEN_PREFIX)) {
-            return bearerToken.substring(TOKEN_PREFIX.length()); // "Bearer " 접두사 제거 후 반환
+            return bearerToken.substring(TOKEN_PREFIX.length());
         }
-        return null; // 토큰이 없으면 null 반환
+
+        // 2. HttpOnly 쿠키에서 토큰 추출
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if (COOKIE_ACCESS_TOKEN.equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        return null;
     }
 }

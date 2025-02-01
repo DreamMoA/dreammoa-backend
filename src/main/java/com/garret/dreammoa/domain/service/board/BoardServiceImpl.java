@@ -8,6 +8,8 @@ import com.garret.dreammoa.domain.model.UserEntity;
 import com.garret.dreammoa.domain.repository.BoardRepository;
 import com.garret.dreammoa.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,7 @@ public class BoardServiceImpl implements BoardService {
 
     private final BoardRepository boardRepository;
     private final UserRepository userRepository; // UserEntity 조회용
+    private final Logger logger = LoggerFactory.getLogger(BoardServiceImpl.class);
 
     /**
      * CREATE
@@ -31,8 +34,14 @@ public class BoardServiceImpl implements BoardService {
         //“해당 userId”를 가진 사용자가 DB에 존재하는지 확인,
         //없으면 예외 발생.
         //있으면 user 변수에 UserEntity를 담는다.
-        UserEntity user = userRepository.findById(dto.getUserId())
-                .orElseThrow(() -> new RuntimeException("해당 사용자 없음: id=" + dto.getUserId()));
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("사용자가 인증되지 않았습니다.");
+        }
+
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        UserEntity user = userRepository.findById(userDetails.getId())
+                .orElseThrow(() -> new RuntimeException("해당 사용자 없음: id=" + userDetails.getId()));
 
         // 2) category(문자열 "질문" or "자유") -> Enum 변환
         BoardEntity.Category category
@@ -58,8 +67,10 @@ public class BoardServiceImpl implements BoardService {
      */
     @Override
     public BoardResponseDto getBoard(Long postId) {
+        logger.info("Fetching board with ID: {}", postId);
         BoardEntity board = boardRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("게시글이 존재하지 않습니다. id=" + postId));
+        logger.debug("Fetched BoardEntity: {}", board);
         return convertToResponseDto(board);
     }
 

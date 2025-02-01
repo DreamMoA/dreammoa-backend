@@ -7,7 +7,6 @@ import lombok.Setter;
 @Setter
 public class BoardRequestDto {
 
-    private Long userId;         // 작성자 user PK
     private String category;     // "질문" or "자유"
     private String title;
     private String content;

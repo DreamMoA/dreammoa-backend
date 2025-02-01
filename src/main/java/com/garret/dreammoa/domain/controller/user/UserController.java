@@ -168,7 +168,7 @@ public class UserController {
     }
 
 
-    @PostMapping("/userInfo")
+    @PostMapping("/user-info")
     public ResponseEntity<?> userInfo(HttpServletRequest request) {
         // 1. 쿠키에서 accessToken 가져오기
         String accessToken = Arrays.stream(request.getCookies())
@@ -192,7 +192,7 @@ public class UserController {
         }
     }
 
-    @PostMapping("/emailFind")
+    @PostMapping("/email-find")
     public ResponseEntity<?> emailFind(@RequestBody EmailFindRequest request) {
         try {
             String email = userService.findByEmailByNicknameAndName(request.getNickname(), request.getName());
@@ -203,7 +203,7 @@ public class UserController {
     }
 
     // 이메일 인증 코드 발송
-    @PostMapping("/pwFind")
+    @PostMapping("/pw-find")
     public ResponseEntity<?> pwFind(@Valid @RequestBody SendVerificationCodeRequest request) {
         String email = request.getEmail();
 

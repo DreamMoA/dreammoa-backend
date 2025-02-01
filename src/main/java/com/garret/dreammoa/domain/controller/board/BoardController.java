@@ -49,7 +49,7 @@ public class BoardController {
 
     /**
      * UPDATE
-     * PUT /api/boards/{postId}
+     * PUT /boards/{postId}
      */
     @PutMapping("/{postId}")
     public ResponseEntity<BoardResponseDto> updateBoard(

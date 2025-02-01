@@ -10,5 +10,4 @@ public class DreamMoaApplication {
 		SpringApplication.run(DreamMoaApplication.class, args);
 
 	}
-
 }
