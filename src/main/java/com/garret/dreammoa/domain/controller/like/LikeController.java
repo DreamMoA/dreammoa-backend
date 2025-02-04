@@ -3,6 +3,7 @@ package com.garret.dreammoa.domain.controller.like;
 import com.garret.dreammoa.domain.dto.user.CustomUserDetails;
 import com.garret.dreammoa.domain.service.like.LikeService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -20,9 +21,17 @@ public class LikeController {
             @PathVariable("postId") Long postId,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        // userDetails.getId() 로 현재 로그인한 사용자의 ID 추출
-        likeService.addLike(postId, userDetails.getId());
-        return ResponseEntity.ok("좋아요 완료");
+        try {
+            // userDetails.getId() 로 현재 로그인한 사용자의 ID 추출
+            likeService.addLike(postId, userDetails.getId());
+            return ResponseEntity.ok().body("{\"message\": \"✅ 좋아요 완료\"}");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("{\"message\": \"" + e.getMessage() + "\"}");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("{\"message\": \"서버 내부 오류가 발생했습니다.\"}");
+        }
     }
 
     // 좋아요 취소
@@ -31,8 +40,16 @@ public class LikeController {
             @PathVariable("postId") Long postId,
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        likeService.removeLike(postId, userDetails.getId());
-        return ResponseEntity.ok("좋아요 취소");
+        try {
+            likeService.removeLike(postId, userDetails.getId());
+            return ResponseEntity.ok().body("{\"message\": \"✅ 좋아요 취소\"}");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("{\"message\": \"" + e.getMessage() + "\"}");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("{\"message\": \"서버 내부 오류가 발생했습니다.\"}");
+        }
     }
 
     @GetMapping("/{postId}/count")

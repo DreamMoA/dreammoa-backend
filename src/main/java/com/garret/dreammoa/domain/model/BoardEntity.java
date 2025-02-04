@@ -14,49 +14,46 @@ import java.time.LocalDateTime;
 @Builder
 public class BoardEntity {
 
-    /**
-     * 게시글 PK
-     */
+    // 게시글 ID(PK)
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "post_id", columnDefinition = "INT UNSIGNED")
     private Long postId;
 
-    /**
-     * 작성자 (회원) : ManyToOne 관계
-     * UserEntity의 PK(id)를 참조 (user_id)
-     */
+    //FK : UserEntity 참조
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")  // 외래키 이름
+    @JoinColumn(name = "user_id")
     private UserEntity user;
 
-    /**
-     * 게시글 카테고리 : '질문','자유'
-     * DB의 ENUM('질문','자유') 와 매핑
-     */
+    //게시글 카테고리 : '질문','자유'
     @Enumerated(EnumType.STRING)
     @Column(name = "category", nullable = false)
     private Category category;
 
-    /**
-     * 제목/내용
-     */
+    //제목
     @Column(nullable = false, length = 255)
     private String title;
 
+    //내용
     @Column(columnDefinition = "TEXT")
     private String content;
 
-    /**
-     * 작성일 / 수정일
-     */
+    //작성일
     private LocalDateTime createdAt;
+
+    //수정일
     private LocalDateTime updatedAt;
+
+    //조회수
+    @Column(nullable = false, columnDefinition = "BIGINT DEFAULT 0")
+    private Long viewCount = 0L;
+
 
     @PrePersist
     public void prePersist() {
         this.createdAt = (this.createdAt == null) ? LocalDateTime.now() : this.createdAt;
         this.updatedAt = LocalDateTime.now();
+        this.viewCount = (this.viewCount == null) ? 0L : this.viewCount;
     }
 
     @PreUpdate

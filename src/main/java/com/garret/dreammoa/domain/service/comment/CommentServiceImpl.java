@@ -11,6 +11,7 @@ import com.garret.dreammoa.domain.repository.UserRepository;
 import com.garret.dreammoa.domain.service.board.BoardService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -30,6 +31,8 @@ public class CommentServiceImpl implements CommentService{
     private final CommentRepository commentRepository;
     private final BoardRepository boardRepository;
     private final UserRepository userRepository;
+
+    private final RedisTemplate<String, String> redisTemplate;
 
     // 댓글 작성
     @Override
@@ -65,6 +68,10 @@ public class CommentServiceImpl implements CommentService{
 
         //댓글 저장
         CommentEntity savedComment = commentRepository.save(comment);
+
+        // Redis 댓글 수 업데이트: 해당 게시글의 댓글 수 증가 (키: "commentCount:{postId}")
+        String key = "commentCount:" + postId;
+        redisTemplate.opsForValue().increment(key);
 
         //ResponseDto로 변환 및 반환
         return convertToResponseDTO(savedComment);
@@ -168,6 +175,10 @@ public class CommentServiceImpl implements CommentService{
 //            comment.setUser(null); // 사용자 정보 제거 (익명화)
             commentRepository.save(comment);
         }
+
+        // Redis 댓글 수 업데이트: 해당 게시글의 댓글 수 감소 (키: "commentCount:{postId}")
+        String key = "commentCount:" + postId;
+        redisTemplate.opsForValue().decrement(key);
     }
 
     // 특정 게시글의 모든 댓글 조회 (추가적인 필터링 및 정렬 가능)
