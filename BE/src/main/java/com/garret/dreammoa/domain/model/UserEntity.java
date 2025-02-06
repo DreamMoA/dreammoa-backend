@@ -56,7 +56,7 @@ public class UserEntity {
 
 
     public enum Role {
-        USER, ADMIN, Google
+        USER, ADMIN, Google, Naver, Kakao
     }
 
     /**

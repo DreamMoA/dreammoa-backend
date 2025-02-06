@@ -121,11 +121,13 @@ public class SecurityConfig {
                         //                        .anyRequest().permitAll()
                 )
                 // 구글로그인설정
+                // 구글로그인설정
+                // 네이버로그인설정
+                // OAuth2 로그인 설정 (구글 + 네이버 + 카카오)
                 .oauth2Login(oauth2 -> oauth2
-                        .loginPage("/login/google/callback")
-                        .authorizationEndpoint(authorizationEndpoint -> authorizationEndpoint.authorizationRequestRepository(oAuth2AuthorizationRequestBasedOnCookieRepository()))
-                        .userInfoEndpoint(userInfoEndpoint -> userInfoEndpoint.userService(oAuth2UserCustomService))
-                        .successHandler(oAuth2SuccessHandler())
+                        .authorizationEndpoint(auth -> auth.authorizationRequestRepository(oAuth2AuthorizationRequestBasedOnCookieRepository()))
+                        .userInfoEndpoint(userInfo -> userInfo.userService(oAuth2UserCustomService))
+                        .successHandler(oAuth2SuccessHandler()) // 로그인 성공 시 JWT 발급
                 )
                 // JWT 필터
                 .addFilterBefore(new JwtFilter(jwtUtil, userDetailsService),
