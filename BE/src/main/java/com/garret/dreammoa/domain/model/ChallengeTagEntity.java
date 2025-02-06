@@ -21,7 +21,7 @@ public class ChallengeTagEntity {
     @JoinColumn(name = "challenge_id", nullable = false)
     private ChallengeEntity challenge;
 
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "tag_id", nullable = false)
-//    private TagEntity tag;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tag_id", nullable = false)
+    private TagEntity tag;
 }

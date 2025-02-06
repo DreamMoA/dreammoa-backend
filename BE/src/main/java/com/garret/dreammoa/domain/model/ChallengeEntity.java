@@ -50,9 +50,9 @@ public class ChallengeEntity {
 
     private Integer standard;
 
-//    @OneToMany(mappedBy = "challenge", cascade = CascadeType.ALL, orphanRemoval = true)
-//    @Builder.Default
-//    private List<ChallengeTagEntity> tags = new ArrayList<>();
+    @OneToMany(mappedBy = "challenge", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ChallengeTagEntity> challengeTags  = new ArrayList<>();
 
     @PrePersist
     public void prePersist() {
@@ -63,11 +63,11 @@ public class ChallengeEntity {
     public void preUpdate(){ this.updatedAt = LocalDateTime.now(); }
 
     // 챌린지에 태그 추가하는 편의 메서드
-//    public void addTag(TagEntity tag) {
-//        ChallengeTagEntity challengeTag = ChallengeTagEntity.builder()
-//                .challenge(this)
-//                .tag(tag)
-//                .build();
-//        this.challengeTags.add(challengeTag);
-//    }
+    public void addTag(TagEntity tag) {
+        ChallengeTagEntity challengeTag = ChallengeTagEntity.builder()
+                .challenge(this)
+                .tag(tag)
+                .build();
+        this.challengeTags.add(challengeTag);
+    }
 }

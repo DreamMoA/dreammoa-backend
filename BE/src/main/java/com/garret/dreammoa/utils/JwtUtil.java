@@ -184,12 +184,4 @@ public class JwtUtil {
             return null;
         }
     }
-    public String resolveToken(HttpServletRequest request) {
-        // 1. Authorization 헤더에서 토큰 추출
-        String bearerToken = request.getHeader(HEADER_AUTHORIZATION);
-        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(TOKEN_PREFIX)) {
-            return bearerToken.substring(TOKEN_PREFIX.length());
-        }
-        return null;
-    }
 }
