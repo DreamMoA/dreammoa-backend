@@ -6,11 +6,10 @@ import com.garret.dreammoa.domain.dto.user.request.*;
 import com.garret.dreammoa.domain.dto.user.response.EmailCheckResponse;
 import com.garret.dreammoa.domain.dto.user.response.NicknameCheckResponse;
 import com.garret.dreammoa.domain.dto.user.response.ProfilePictureResponse;
-import com.garret.dreammoa.domain.service.EmailService;
 import com.garret.dreammoa.domain.dto.user.response.UserResponse;
+import com.garret.dreammoa.domain.service.EmailService;
 import com.garret.dreammoa.domain.service.UserService;
 import com.garret.dreammoa.utils.JwtUtil;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -22,8 +21,6 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.net.CookieStore;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -122,15 +119,15 @@ public class UserController {
 
     @PostMapping("/profile-picture")
     public ResponseEntity<?> getUserProfile(HttpServletRequest request) {
-        String accessToken = Arrays.stream(request.getCookies())
-                .filter(cookie -> "access_token".equals(cookie.getName()))
-                .map(Cookie::getValue)
-                .findFirst()
-                .orElse(null);
 
-        if (accessToken == null) {
+        // 1. Authorization 헤더에서 Bearer 토큰 추출
+        String authorizationHeader = request.getHeader("Authorization");
+
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
             return ResponseEntity.badRequest().body("Access Token이 없습니다.");
         }
+
+        String accessToken = authorizationHeader.substring(7); // "Bearer " 이후의 토큰 값만 추출
 
         try {
             // 2. Service를 통해 UserResponse DTO 추출
@@ -167,16 +164,14 @@ public class UserController {
 
     @PostMapping("/user-info")
     public ResponseEntity<?> userInfo(HttpServletRequest request) {
-        // 1. 쿠키에서 accessToken 가져오기
-        String accessToken = Arrays.stream(request.getCookies())
-                .filter(cookie -> "access_token".equals(cookie.getName()))
-                .map(Cookie::getValue)
-                .findFirst()
-                .orElse(null);
+        // 1. Authorization 헤더에서 Bearer 토큰 추출
+        String authorizationHeader = request.getHeader("Authorization");
 
-        if (accessToken == null) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
             return ResponseEntity.badRequest().body("Access Token이 없습니다.");
         }
+
+        String accessToken = authorizationHeader.substring(7); // "Bearer " 이후의 토큰 값만 추출
 
         try {
             // 2. Service를 통해 UserResponse DTO 추출
@@ -217,12 +212,11 @@ public class UserController {
         String email = request.get("email");
         String code = request.get("code");
 
-
-        boolean isVerified = emailService.verifyCode(email, code);
         if (email == null || code == null || email.isEmpty() || code.isEmpty()) {
             return ResponseEntity.badRequest().body("이메일과 인증 코드를 모두 입력해주세요.");
         }
 
+        boolean isVerified = emailService.verifyCode(email, code);
         if (isVerified) {
             return ResponseEntity.ok("인증 성공! 비밀번호 재설정 페이지로 이동하세요.");
         } else {
@@ -232,15 +226,14 @@ public class UserController {
 
     @PostMapping("/delete-account")
     public ResponseEntity<?> deleteAccount(@Valid @RequestBody LoginRequest loginRequest, HttpServletRequest request ) {
-        String accessToken = Arrays.stream(request.getCookies())
-                .filter(cookie -> "access_token".equals(cookie.getName()))
-                .map(Cookie::getValue)
-                .findFirst()
-                .orElse(null);
+        // 1. Authorization 헤더에서 Bearer 토큰 추출
+        String authorizationHeader = request.getHeader("Authorization");
 
-        if (accessToken == null) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
             return ResponseEntity.badRequest().body("Access Token이 없습니다.");
         }
+
+        String accessToken = authorizationHeader.substring(7); // "Bearer " 이후의 토큰 값만 추출
 
         try {
             // Authorization 헤더에서 accessToken을 추출하고 탈퇴 처리 요청
@@ -273,18 +266,14 @@ public class UserController {
             return ResponseEntity.badRequest().body(errorMessage);
         }
 
-        // Access Token 확인
-        String accessToken = Arrays.stream(request.getCookies())
-                .filter(cookie -> "access_token".equals(cookie.getName()))
-                .map(Cookie::getValue)
-                .findFirst()
-                .orElse(null);
+        // 1. Authorization 헤더에서 Bearer 토큰 추출
+        String authorizationHeader = request.getHeader("Authorization");
 
-        System.out.println("accessToken = " + accessToken);
-
-        if (accessToken == null) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
             return ResponseEntity.badRequest().body("Access Token이 없습니다.");
         }
+
+        String accessToken = authorizationHeader.substring(7); // "Bearer " 이후의 토큰 값만 추출
 
         try {
             userService.updateUserProfile(accessToken, updateProfileRequest, profilePicture);
@@ -297,20 +286,17 @@ public class UserController {
     @PostMapping("/check-password")
     public ResponseEntity<?> checkPassword(@Valid @RequestBody CheckPasswordRequest request,
                                            HttpServletRequest httpRequest) {
-        // Access Token 확인
-        String accessToken = Arrays.stream(httpRequest.getCookies())
-                .filter(cookie -> "access_token".equals(cookie.getName()))
-                .map(Cookie::getValue)
-                .findFirst()
-                .orElse(null);
+        // Authorization 헤더에서 Bearer 토큰 추출 (DTO가 아닌 HttpServletRequest에서 가져옴)
+        String authorizationHeader = httpRequest.getHeader("Authorization");
 
-        if (accessToken == null) {
-            return ResponseEntity.badRequest().body(new ErrorResponse("Access Token이 없습니다."));
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            return ResponseEntity.badRequest().body("Access Token이 없습니다.");
         }
 
+        String accessToken = authorizationHeader.substring(7); // "Bearer " 이후의 토큰 값만 추출
+
         try {
-            userService.validatePassword(request.getPassword(),jwtUtil.getEmailFromToken(accessToken));
-            //@ 있는지 벨리데이션 함 해줌
+            userService.validatePassword(request.getPassword(), jwtUtil.getEmailFromToken(accessToken));
             boolean isMatch = userService.checkPassword(accessToken, request.getPassword());
             if (isMatch) {
                 return ResponseEntity.ok(new SuccessResponse("비밀번호가 일치합니다."));
@@ -325,15 +311,14 @@ public class UserController {
     @PutMapping("/update-password")
     public ResponseEntity<?> updatePassword(@Valid @RequestBody UpdatePasswordRequest request,
                                             HttpServletRequest httpRequest) {
-        String accessToken = Arrays.stream(httpRequest.getCookies())
-                .filter(cookie -> "access_token".equals(cookie.getName()))
-                .map(Cookie::getValue)
-                .findFirst()
-                .orElse(null);
+        // Authorization 헤더에서 Bearer 토큰 추출 (DTO가 아닌 HttpServletRequest에서 가져옴)
+        String authorizationHeader = httpRequest.getHeader("Authorization");
 
-        if (accessToken == null) {
-            return ResponseEntity.badRequest().body(new ErrorResponse("Access Token이 없습니다."));
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            return ResponseEntity.badRequest().body("Access Token이 없습니다.");
         }
+
+        String accessToken = authorizationHeader.substring(7); // "Bearer " 이후의 토큰 값만 추출
 
         try {
             userService.updatePassword(accessToken, request.getCurrentPassword(), request.getNewPassword(), request.getConfirmPassword());

@@ -194,13 +194,6 @@ public class UserService {
         user.setName(updateProfileRequest.getName());
         user.setNickname(newNickname);
 
-        // 비밀번호 변경 --> 이거 프론트랑 상의 해야됨 (일단 놨둬도 상관 없는데 흠..)
-        String newPassword = updateProfileRequest.getPassword();
-        if (newPassword != null && !newPassword.isEmpty()) {
-            validatePassword(newPassword, email);
-            user.setPassword(bCryptPasswordEncoder.encode(newPassword));
-        }
-
         // 프로필 사진 업데이트 (모든 파일이 S3에 저장됨)
         if(Objects.nonNull(profilePicture)){
             try{
