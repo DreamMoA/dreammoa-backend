@@ -44,6 +44,11 @@ public class FileService {
             if (multipartFile.getSize() > maxProfileSize) {
                 throw new IllegalArgumentException("프로필 사진은 최대 2MB 까지 업로드할 수 있습니다.");
             }
+        } else if (relatedType == RelatedType.CHALLENGE) {
+            long maxProfileSize = 2 * 1024 * 1024; // 2MB
+            if (multipartFile.getSize() > maxProfileSize) {
+                throw new IllegalArgumentException("썸네일 사진은 최대 2MB 까지 업로드할 수 있습니다.");
+            }
         } else {
             long maxFileSize = 500L * 1024 * 1024; // 500MB
             if (multipartFile.getSize() > maxFileSize) {
