@@ -3,9 +3,11 @@ package com.garret.dreammoa.utils;
 import com.garret.dreammoa.domain.model.UserEntity;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.security.Key;
 import java.util.Date;
@@ -20,6 +22,8 @@ public class JwtUtil {
     private static final String JWT_SECRET = "SECRET-TOO-LONG-FOR-DEMO-PLEASE-USE-REAL-KEY-----123456789";
     private static final long ACCESS_TOKEN_EXPIRE_TIME = 1000 * 60 * 30; // 30분
     private static final long REFRESH_TOKEN_EXPIRE_TIME = 1000L * 60 * 60 * 24 * 7; // 1주
+    private static final String HEADER_AUTHORIZATION = "Authorization"; // HTTP Authorization 헤더
+    private static final String TOKEN_PREFIX = "Bearer ";
 
     // JWT 서명 키
     private final Key key = Keys.hmacShaKeyFor(JWT_SECRET.getBytes());
@@ -165,5 +169,13 @@ public class JwtUtil {
             log.error("유효하지 않은 JWT 토큰 또는 userId 변환 실패", e);
             return null;
         }
+    }
+    public String resolveToken(HttpServletRequest request) {
+        // 1. Authorization 헤더에서 토큰 추출
+        String bearerToken = request.getHeader(HEADER_AUTHORIZATION);
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(TOKEN_PREFIX)) {
+            return bearerToken.substring(TOKEN_PREFIX.length());
+        }
+        return null;
     }
 }

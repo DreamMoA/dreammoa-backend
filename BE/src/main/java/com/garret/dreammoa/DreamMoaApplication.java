@@ -6,7 +6,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableScheduling
-public class DreamMoaApplication {
+public class 	DreamMoaApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(DreamMoaApplication.class, args);
