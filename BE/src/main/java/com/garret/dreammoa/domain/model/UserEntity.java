@@ -44,6 +44,9 @@ public class UserEntity {
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private FileEntity profileImage;
 
+    @Column(columnDefinition = "TEXT", nullable = true)
+    private String determination;
+
     // JPA의 @PrePersist를 통해 persist 전에 실행
     @PrePersist
     public void prePersist() {
