@@ -6,6 +6,7 @@ import com.garret.dreammoa.domain.model.BoardEntity;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Setter
