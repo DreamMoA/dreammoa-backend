@@ -8,6 +8,7 @@ import com.garret.dreammoa.domain.service.board.BoardService;
 import com.garret.dreammoa.domain.service.like.LikeService;
 import com.garret.dreammoa.domain.service.viewcount.ViewCountService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestController
 @RequestMapping("/boards")
 @RequiredArgsConstructor
@@ -92,26 +94,35 @@ public class BoardController {
         return ResponseEntity.ok(totalCount);
     }
 
-    // 카테고리별 게시글 개수 조회 엔드포인트
-    @GetMapping("/count/{category}")
-    public ResponseEntity<Integer> getBoardCountByCategory(@PathVariable String category) {
-        // URL 디코딩 추가 (UTF-8 기준)
+    @GetMapping("/count/category")
+    public ResponseEntity<Integer> getBoardCountByCategory(@RequestParam String category) {
         try {
-            category = java.net.URLDecoder.decode(category, "UTF-8");
+            // URL 디코딩 후 trim 처리 (UTF-8 기준)
+            String decodedCategory = java.net.URLDecoder.decode(category, "UTF-8").trim();
+            logger.debug("디코딩 후 category: {}", decodedCategory);
+            category = decodedCategory;
         } catch (Exception e) {
             logger.error("카테고리 디코딩 오류", e);
+            category = "";
         }
 
+        // 한글 그대로 키 생성 (초기화 시 사용한 키와 동일)
         String key = "board:count:" + category;
+        logger.debug("조회할 Redis 키: {}", key);
+
         String countStr = redisTemplate.opsForValue().get(key);
+        logger.debug("Redis에서 반환된 countStr: {}", countStr);
+
         int count = 0;
         if (countStr != null && !countStr.trim().isEmpty()) {
             try {
                 count = Integer.parseInt(countStr.trim());
             } catch (NumberFormatException e) {
                 logger.error("Redis에 저장된 게시글 카운터 값이 숫자가 아닙니다. key: {}, value: {}", key, countStr, e);
+                count = 0;
             }
         }
+        logger.debug("최종 반환 count: {}", count);
         return ResponseEntity.ok(count);
     }
 

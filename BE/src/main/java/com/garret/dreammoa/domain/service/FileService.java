@@ -11,6 +11,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -126,6 +131,49 @@ public class FileService {
     public Optional<FileEntity> getProfilePicture(Long userId) {
         return fileRepository.findByRelatedIdAndRelatedType(userId, RelatedType.PROFILE)
                 .stream().findFirst();
+    }
+
+    public String saveBase64FileS3(String base64Data, Long relatedId, RelatedType relatedType) throws IOException {
+        // base64 디코딩
+        byte[] decodedBytes = Base64.getDecoder().decode(base64Data);
+
+        // 파일명 생성 (S3 내에 저장될 키)
+        //    예: folder + UUID + 확장자
+        String folder = "post/"; // relatedType이 PROFILE이면 "profile/", etc.
+        String uniqueName = generateUniqueFilename() + ".png"; // png라 가정
+        String s3Key = folder + uniqueName;
+
+        // S3 업로드
+        ObjectMetadata metadata = new ObjectMetadata();
+        metadata.setContentLength(decodedBytes.length);
+        metadata.setContentType("image/png");
+
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(decodedBytes);
+        amazonS3Client.putObject(bucketName, s3Key, inputStream, metadata);
+
+        // 업로드된 S3 URL 얻기
+        String s3Url = amazonS3Client.getUrl(bucketName, s3Key).toString();
+
+        // file 테이블에 Insert
+        FileEntity fileEntity = FileEntity.builder()
+                .relatedId(relatedId)
+                .relatedType(relatedType)
+                .fileName(uniqueName)   // 실제 S3 키
+                .filePath(s3Key)        // "post/고유아이디/abc123.png" 등
+                .fileUrl(s3Url)         // S3 접근 URL
+                .fileType("image/png")
+                .build();
+
+        fileRepository.save(fileEntity);
+
+        // S3 URL 반환
+        return s3Url;
+    }
+
+    private String generateUniqueFilename() {
+        String uuid = UUID.randomUUID().toString().substring(0, 8);
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        return uuid + "_" + timestamp;
     }
 
 }
