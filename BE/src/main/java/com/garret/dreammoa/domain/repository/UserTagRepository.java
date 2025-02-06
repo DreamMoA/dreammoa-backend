@@ -18,4 +18,6 @@ public interface UserTagRepository extends JpaRepository<UserTagEntity, Long> {
 
     // 특정 사용자가 등록한 특정 태그 조회
     Optional<UserTagEntity> findTagByIdAndUser(Long id, UserEntity user);
+
+    boolean existsByUserAndTagName(UserEntity user, String tagName);
 }

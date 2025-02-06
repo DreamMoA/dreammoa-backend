@@ -1,4 +1,4 @@
-package com.garret.dreammoa.domain.dto.tag.responsedto;
+package com.garret.dreammoa.domain.dto.usertag.responsedto;
 
 import com.garret.dreammoa.domain.model.UserTagEntity;
 import lombok.Getter;

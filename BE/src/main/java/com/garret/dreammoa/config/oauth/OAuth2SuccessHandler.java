@@ -71,43 +71,11 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         // 🔹 프로필 이미지 저장
         saveProfileImage(user, userInfo.getProfileImageUrl());
 
-        // 🔹 JWT 토큰 생성
-        String accessToken = jwtUtil.createAccessToken(
-                user.getId(), user.getEmail(), user.getName(), user.getNickname()
-        );
+        // 🔹 JWT 토큰 생성 (중복 제거)
+        String accessToken = jwtUtil.createAccessToken(user.getId(), user.getEmail(), user.getName(), user.getNickname(), String.valueOf(user.getRole()));
         String refreshToken = jwtUtil.createRefreshToken(user);
 
-                            // Google 프로필 이미지 다운로드 후 저장
-                            byte[] imageBytes = new URL(profileImageUrl).openStream().readAllBytes();
-                            Files.write(filePath, imageBytes);
-                        } catch (IOException e) {
-                            throw new RuntimeException("Failed to save profile image", e);
-                        }
-
-                        // 파일 URL 생성 (정적 경로 기준)
-                        String fileUrl = fileProperties.getStaticLocations().replace("file:", "") + uniqueFileName;
-
-                        // FileEntity 생성 및 저장
-                        FileEntity newFile = FileEntity.builder()
-                                .relatedId(user.getId())
-                                .relatedType(FileEntity.RelatedType.PROFILE)
-                                .fileName(uniqueFileName)
-                                .filePath(filePath.toString())
-                                .fileUrl(fileUrl)
-                                .fileType("jpeg")
-                                .build();
-                        return fileRepository.save(newFile);
-                    });
-
-            // User와 프로필 이미지 연관
-            user.setProfileImage(profileImage);
-        }
-
-        // JWT 토큰 생성
-        String accessToken = jwtUtil.createAccessToken(user.getId(), user.getEmail(), user.getName(), user.getNickname(), user.getRole().name());
-        String refreshToken = jwtUtil.createRefreshToken(user); // Redis에 저장됨
-
-        // 쿠키에 토큰 저장
+        // 🔹 쿠키에 토큰 저장
         CookieUtil.addCookie(response, "access_token", accessToken, (int) jwtUtil.getAccessTokenExpirationTime());
         CookieUtil.addHttpOnlyCookie(response, "refresh_token", refreshToken, (int) jwtUtil.getRefreshTokenExpirationTime());
 
@@ -115,8 +83,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         response.setContentType("application/json;charset=UTF-8");
         response.setStatus(HttpServletResponse.SC_OK);
         new ObjectMapper().writeValue(response.getWriter(), Map.of(
-                "accessToken", accessToken,
-                "refreshToken", refreshToken
+                "accessToken", accessToken
         ));
     }
 

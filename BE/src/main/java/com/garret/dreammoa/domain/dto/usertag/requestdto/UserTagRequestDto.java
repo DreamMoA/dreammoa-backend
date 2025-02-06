@@ -1,4 +1,4 @@
-package com.garret.dreammoa.domain.dto.tag.requestdto;
+package com.garret.dreammoa.domain.dto.usertag.requestdto;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;

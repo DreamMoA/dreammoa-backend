@@ -1,17 +1,13 @@
 package com.garret.dreammoa.domain.controller.usertag;
 
-import com.garret.dreammoa.domain.dto.tag.requestdto.UserTagRequestDto;
-import com.garret.dreammoa.domain.dto.tag.responsedto.UserTagResponseDto;
-import com.garret.dreammoa.domain.service.UserService;
+import com.garret.dreammoa.domain.dto.usertag.requestdto.UserTagRequestDto;
+import com.garret.dreammoa.domain.dto.usertag.responsedto.UserTagResponseDto;
 import com.garret.dreammoa.domain.service.usertag.UserTagService;
 import com.garret.dreammoa.utils.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.parameters.P;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,15 +17,6 @@ import java.util.List;
 public class UserTagController {
     private final UserTagService tagService;
     private final JwtUtil jwtUtil;
-    /**
-     * 전체 조회
-     */
-    @GetMapping("/tags")
-    public ResponseEntity<List<UserTagResponseDto>> getAllTags() {
-        List<UserTagResponseDto> tags = tagService.getAllTags();
-        return ResponseEntity.ok(tags);
-    }
-
     /**
      * 특정 사용자의 관심사 태그 조회
      */

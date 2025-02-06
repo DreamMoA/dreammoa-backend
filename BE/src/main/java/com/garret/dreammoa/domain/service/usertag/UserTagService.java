@@ -1,7 +1,7 @@
 package com.garret.dreammoa.domain.service.usertag;
 
-import com.garret.dreammoa.domain.dto.tag.requestdto.UserTagRequestDto;
-import com.garret.dreammoa.domain.dto.tag.responsedto.UserTagResponseDto;
+import com.garret.dreammoa.domain.dto.usertag.requestdto.UserTagRequestDto;
+import com.garret.dreammoa.domain.dto.usertag.responsedto.UserTagResponseDto;
 
 import java.util.List;
 
