@@ -3,13 +3,14 @@ package com.garret.dreammoa.domain.dto.challenge.requestdto;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
 @Setter
-public class ChallengeCreateRequest {
+public class ChallengeCreateRequest extends ChallengeRequest {
 
     @NotBlank(message = "챌린지 제목은 필수입니다.")
     private String title;

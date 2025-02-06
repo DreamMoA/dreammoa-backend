@@ -9,7 +9,8 @@ import java.util.List;
 
 @Getter
 @Builder
-public class ChallengeCreateResponse {
+public class ChallengeResponse {
+
     private Long challengeId;
     private String title;
     private String description;
@@ -19,26 +20,30 @@ public class ChallengeCreateResponse {
     private List<String> tags;
     private LocalDateTime startDate;
     private LocalDateTime expireDate;
+    private String status;
     private Integer standard;
     private LocalDateTime createdAt;
     private Boolean isActive;
+    private String message;
 
-    public static ChallengeCreateResponse fromEntity(String thumbnailURL, ChallengeEntity challenge) {
-        return ChallengeCreateResponse.builder()
+    public static ChallengeResponse fromEntity(String thumbnailURL, ChallengeEntity challenge, String message) {
+        return ChallengeResponse.builder()
                 .challengeId(challenge.getChallengeId())
                 .title(challenge.getTitle())
                 .description(challenge.getDescription())
                 .maxParticipants(challenge.getMaxParticipants())
                 .isPrivate(challenge.getIsPrivate())
                 .thumbnail(thumbnailURL)
-//                .tags(challenge.getChallengeTags().stream()
-//                        .map(challengeTag -> challengeTag.getTag().getName())
-//                        .toList())
+                .tags(challenge.getChallengeTags().stream()
+                        .map(challengeTag -> challengeTag.getTag().getTagName())
+                        .toList())
                 .startDate(challenge.getStartDate())
                 .expireDate(challenge.getExpireDate())
+                .status(challenge.getStatus())
                 .standard(challenge.getStandard())
                 .createdAt(challenge.getCreatedAt())
                 .isActive(challenge.getIsActive())
+                .message(message)
                 .build();
     }
 }
