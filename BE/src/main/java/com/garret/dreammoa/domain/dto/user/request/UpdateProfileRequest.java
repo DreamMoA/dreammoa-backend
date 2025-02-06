@@ -25,10 +25,4 @@ public class UpdateProfileRequest {
             message = "Nickname은 영어와 한글만 허용되며 2~12글자여야 합니다."
     )
     private String nickname;
-
-    @Pattern(
-            regexp = "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[@$!%*#?&]).{8,16}$",
-            message = "비밀번호는 영어, 숫자, 특수문자를 모두 포함하여 8~16자여야 합니다."
-    )
-    private String password;
 }

@@ -1,24 +1,22 @@
 package com.garret.dreammoa.config;
-
-
+import com.garret.dreammoa.config.FileProperties;
 import com.garret.dreammoa.config.oauth.OAuth2AuthorizationRequestBasedOnCookieRepository;
 import com.garret.dreammoa.config.oauth.OAuth2SuccessHandler;
 import com.garret.dreammoa.config.oauth.OAuth2UserCustomService;
 import com.garret.dreammoa.domain.repository.FileRepository;
-import com.garret.dreammoa.domain.service.UserService;
-import com.garret.dreammoa.filter.JwtFilter;
-import com.garret.dreammoa.utils.JwtUtil;
 import com.garret.dreammoa.domain.repository.UserRepository;
 import com.garret.dreammoa.domain.service.CustomUserDetailsService;
+import com.garret.dreammoa.filter.JwtFilter;
+import com.garret.dreammoa.utils.JwtUtil;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -36,6 +34,7 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
+@Slf4j
 public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
@@ -79,7 +78,6 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 // CORS 설정
-                .cors(Customizer.withDefaults())
                 // CSRF 비활성화
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -90,38 +88,37 @@ public class SecurityConfig {
                 // 예외처리(인증 실패 시 401 반환)
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, authException) -> {
+                            log.warn("🔴 [401 Unauthorized] 인증되지 않은 사용자 접근 - 요청 경로: {}", request.getRequestURI());
                             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            log.warn("🟠 [403 Forbidden] 권한 부족 - 요청 경로: {}, 사용자: {}",
+                                    request.getRequestURI(), request.getUserPrincipal() != null ? request.getUserPrincipal().getName() : "Anonymous");
+                            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Forbidden");
                         })
                 )
                 // 인증/인가 설정
                 .authorizeHttpRequests(auth -> auth
-                        // Swagger UI 경로 인증 없이 허용
-                        .requestMatchers(
-                                "/v3/api-docs/**",  // OpenAPI 문서 JSON
-                                "/swagger-ui/**",   // Swagger UI 리소스
-                                "/swagger-ui.html", // Swagger UI 접속 페이지
-                                "/webjars/**",      // Swagger가 사용하는 정적 리소스
-                                "/swagger-resources/**"
-                        ).permitAll()
+                                // Swagger UI 경로 인증 없이 허용
+                                .requestMatchers(
+                                        "/v3/api-docs/**",  // OpenAPI 문서 JSON
+                                        "/swagger-ui/**",   // Swagger UI 리소스
+                                        "/swagger-ui.html", // Swagger UI 접속 페이지
+                                        "/webjars/**",      // Swagger가 사용하는 정적 리소스
+                                        "/swagger-resources/**"
+                                ).permitAll()
 
-                        // 특정 GET 요청 허용 (글 목록 조회만)
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/boards").permitAll()
-
-                        // 상세 조회, 글 작성/수정/삭제는 로그인 사용자만
-//                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/boards/{postId}").authenticated()
-//                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/boards/**").authenticated()
-//                        .requestMatchers(org.springframework.http.HttpMethod.PUT, "/boards/**").authenticated()
-//                        .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/boards/**").authenticated()
-//                                .requestMatchers("/api/comments/**").authenticated()
-                        .requestMatchers(HttpMethod.GET, "api/likes/**").permitAll()
-//                        .requestMatchers("api/likes/**").authenticated()
-                        .requestMatchers("/login","/", "/openvidu/**", "/join","/email-find","/pw-find",
-                                "/send-verification-code", "/verify-email-code", "/check-email", "/check-nickname").permitAll()
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/files/**").permitAll()
-                        .requestMatchers("/admin").hasRole("ADMIN")
-                        .anyRequest().authenticated()
-//                        .anyRequest().permitAll()
+                                // 특정 GET 요청 허용 (글 목록 조회만)
+                                .requestMatchers(HttpMethod.GET, "/boards").permitAll()
+                                .requestMatchers(HttpMethod.GET, "api/likes/**").permitAll()
+                                //                        .requestMatchers("api/likes/**").authenticated()
+                                .requestMatchers("/login","/", "/error", "/refresh", "/openvidu/**", "/join","/email-find","/pw-find",
+                                        "/send-verification-code", "/verify-email-code", "/check-email", "/check-nickname").permitAll()
+                                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                                .requestMatchers("/files/**").permitAll()
+//                                .requestMatchers("/admin/**").hasRole("ADMIN")
+                                .anyRequest().authenticated()
+                        //                        .anyRequest().permitAll()
                 )
                 // 구글로그인설정
                 .oauth2Login(oauth2 -> oauth2
@@ -157,3 +154,4 @@ public class SecurityConfig {
 
 
 }
+

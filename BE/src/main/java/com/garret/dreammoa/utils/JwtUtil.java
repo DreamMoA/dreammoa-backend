@@ -34,41 +34,55 @@ public class JwtUtil {
 
 
     public String createAccessToken(Long userId, String email, String name, String nickname) {
+        if (userId == null || email == null || name == null || nickname == null) {
+            log.error("❌ [AT 발급 오류] 필수 정보가 null입니다. userId: {}, email: {}, name: {}, nickname: {}",
+                    userId, email, name, nickname);
+            throw new IllegalArgumentException("필수 정보가 null입니다.");
+        }
+
         Date now = new Date();
         Date validity = new Date(now.getTime() + ACCESS_TOKEN_EXPIRE_TIME);
 
-        return Jwts.builder()
+        Map<String, Object> claims = Map.of(
+                "userId", String.valueOf(userId),
+                "name", name,
+                "nickname", nickname
+        );
+
+        String token = Jwts.builder()
+                .setClaims(claims)
                 .setSubject(email)
                 .setIssuedAt(now)
                 .setExpiration(validity)
-                .addClaims(Map.of(
-                        "name", name,
-                        "nickname", nickname,
-                        "userId", String.valueOf(userId)
-                ))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
-    }
 
+        log.info("✅ [AT 발급 완료] userId: {}, email: {}, AT: {}", userId, email, token);
+        return token;
+    }
 
     public String createRefreshToken(UserEntity user) {
         Date now = new Date();
         Date validity = new Date(now.getTime() + REFRESH_TOKEN_EXPIRE_TIME);
 
         String refreshToken = Jwts.builder()
-                .setSubject(user.getEmail()) // 이메일을 토큰 주제로 설정
-                .setIssuedAt(now) // 토큰 발행 시간
-                .setExpiration(validity) // 토큰 만료 시간
-                .addClaims(Map.of( // 사용자 ID를 추가로 저장
-                        "userId", user.getId().toString() // userId를 String으로 저장
+                .setSubject(user.getEmail()) // 이메일을 주제로 설정
+                .setIssuedAt(now) // 발행 시간
+                .setExpiration(validity) // 만료 시간
+                .addClaims(Map.of(
+                        "userId", String.valueOf(user.getId()),   // ✅ 기존 RT에는 userId만 있었음
+                        "name", user.getName(),                  // ✅ name 추가
+                        "nickname", user.getNickname()           // ✅ nickname 추가
                 ))
-                .signWith(key, SignatureAlgorithm.HS256) // HMAC SHA-256으로 서명
+                .signWith(key, SignatureAlgorithm.HS256) // 서명
                 .compact();
 
-        // Redis에 리프레시 토큰 저장 (키: userId.toString(), 값: 토큰)
+        // Redis에 RT 저장
         redisTemplate.opsForValue().set(user.getId().toString(), refreshToken, REFRESH_TOKEN_EXPIRE_TIME, TimeUnit.MILLISECONDS);
+        log.info("✅ [RT 발급 완료] UserID: {}, Name: {}, Nickname: {}", user.getId(), user.getName(), user.getNickname());
         return refreshToken;
     }
+
 
 
     public String getEmailFromToken(String token) {
