@@ -4,22 +4,35 @@ import com.garret.dreammoa.domain.dto.board.requestdto.BoardRequestDto;
 import com.garret.dreammoa.domain.dto.board.responsedto.BoardResponseDto;
 import com.garret.dreammoa.domain.dto.user.CustomUserDetails;
 import com.garret.dreammoa.domain.model.BoardEntity;
+import com.garret.dreammoa.domain.model.FileEntity;
 import com.garret.dreammoa.domain.model.UserEntity;
 import com.garret.dreammoa.domain.repository.BoardRepository;
 import com.garret.dreammoa.domain.repository.CommentRepository;
 import com.garret.dreammoa.domain.repository.UserRepository;
+import com.garret.dreammoa.domain.service.FileService;
 import com.garret.dreammoa.domain.service.viewcount.ViewCountService;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.client.RestTemplate;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -29,8 +42,9 @@ import java.util.stream.Collectors;
 @Slf4j
 public class BoardServiceImpl implements BoardService {
 
+    private final FileService fileService;
     private final BoardRepository boardRepository;
-    private final UserRepository userRepository; // UserEntity 조회용
+    private final UserRepository userRepository;
     private final CommentRepository commentRepository;
     private final Logger logger = LoggerFactory.getLogger(BoardServiceImpl.class);
     private final ViewCountService viewCountService;
@@ -40,11 +54,9 @@ public class BoardServiceImpl implements BoardService {
 
     @PostConstruct
     public void initializeBoardCount() {
-        // 전체 게시글 개수 초기화
         long totalCount = boardRepository.count();
         redisTemplate.opsForValue().set("board:count", String.valueOf(totalCount));
 
-        // 카테고리별 초기화 (예: "자유", "질문")
         long freeCount = boardRepository.countByCategory(BoardEntity.Category.자유);
         long questionCount = boardRepository.countByCategory(BoardEntity.Category.질문);
         redisTemplate.opsForValue().set("board:count:자유", String.valueOf(freeCount));
@@ -53,153 +65,203 @@ public class BoardServiceImpl implements BoardService {
         logger.info("게시글 카운터 초기화 완료: 전체={}, 자유={}, 질문={}", totalCount, freeCount, questionCount);
     }
 
-    //게시글 생성
+    /**
+     * CREATE
+     */
     @Override
+    @Transactional
     public BoardResponseDto createBoard(BoardRequestDto dto) {
-        //작성자(userId) 조회
-        //해당 userId를 가진 사용자가 DB에 존재하는지 확인,
-        //없으면 예외 발생
-        //있으면 user 변수에 UserEntity를 담는다
+
+        // 작성자 인증 및 사용자 조회
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new RuntimeException("사용자가 인증되지 않았습니다.");
         }
-
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
 
 
         UserEntity user = userRepository.findById(userDetails.getId())
                 .orElseThrow(() -> new RuntimeException("해당 사용자 없음: id=" + userDetails.getId()));
 
-        //category(문자열 "질문" or "자유") -> Enum 변환
-        BoardEntity.Category category
-                = BoardEntity.Category.valueOf(dto.getCategory()); // valueOf("질문") -> Category.질문
+        // 카테고리(문자열 "질문" or "자유") -> Enum 변환
+        BoardEntity.Category category = BoardEntity.Category.valueOf(dto.getCategory());
 
-        //엔티티 생성
+        // 엔티티 생성 (content는 일단 빈 문자열)
         BoardEntity board = BoardEntity.builder()
                 .user(user)
                 .category(category)
                 .title(dto.getTitle())
-                .content(dto.getContent())
+                .content("")
                 .build();
 
-        //저장
-        BoardEntity saved = boardRepository.save(board);
+        // 게시글을 먼저 저장하여 postId를 확보 (저장 후엔 board.getPostId()가 생성됨)
+        BoardEntity savedBoard = boardRepository.saveAndFlush(board);
 
-        // 게시글 생성 후, 전체 카운터와 카테고리별 카운터 업데이트
-        redisTemplate.opsForValue().increment("board:count", 1);  // 전체 게시글 개수 증가
-        String categoryKey = "board:count:" + saved.getCategory().name();
-        redisTemplate.opsForValue().increment(categoryKey, 1);      // 해당 카테고리 개수 증가
+        // 확보된 postId를 사용해 Quill 본문 내의 Base64 이미지를 S3 업로드하고 URL로 치환
+        String finalContent = parseAndUploadBase64Images(dto.getContent(), savedBoard.getPostId());
 
-        //DTO 변환 후 반환
-        return convertToResponseDto(saved, 0);
+        // 치환된 최종 HTML을 다시 board 객체에 반영한 후 UPDATE
+        savedBoard.setContent(finalContent);
+        BoardEntity updatedBoard = boardRepository.saveAndFlush(savedBoard);
+
+        // 트랜잭션 커밋 후 Redis 업데이트
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                Long newTotalCount = redisTemplate.opsForValue().increment("board:count", 1);
+                logger.debug("전체 게시글 카운터 업데이트 후 새 값: {}", newTotalCount);
+
+                String categoryKey = "board:count:" + updatedBoard.getCategory().name();
+                Long newCategoryCount = redisTemplate.opsForValue().increment(categoryKey, 1);
+                logger.debug("게시글 생성 후 카테고리별 카운터 업데이트, 키: {}, 새 값: {}", categoryKey, newCategoryCount);
+            }
+            @Override public void suspend() {}
+            @Override public void resume() {}
+            @Override public void flush() {}
+            @Override public void beforeCommit(boolean readOnly) {}
+            @Override public void beforeCompletion() {}
+            @Override public void afterCompletion(int status) {}
+        });
+
+        return convertToResponseDto(updatedBoard, 0);
     }
 
-    //게시글 상세조회
-    @Override
-    public BoardResponseDto getBoard(Long postId) {
+    /**
+     * Base64 이미지를 S3 URL로 치환하는 메서드 (postId를 사용)
+     */
+    private String parseAndUploadBase64Images(String originalHtml, Long postId) {
+        if (originalHtml == null || originalHtml.trim().isEmpty()) {
+            return originalHtml;
+        }
 
-        //DTO는 캐시에서 읽어옴
-        BoardResponseDto dto = getBoardDtoFromCache(postId);
-
-        // 댓글 수 업데이트: Redis에서 읽어오기
-        int commentCount = getCommentCountFromCache(postId);
-        dto.setCommentCount(commentCount);
-
-        // 최신 viewCount 조회
-        int updatedViewCount = viewCountService.getViewCount(postId);
-
-        // 캐시된 DTO의 viewCount 값을 최신 값으로 교체하여 응답
-        dto.setViewCount(updatedViewCount);
-
-        return dto;
+        Document doc = Jsoup.parseBodyFragment(originalHtml);
+        Elements imgTags = doc.select("img");
+        for (Element img : imgTags) {
+            String src = img.attr("src");
+            if (src != null && src.startsWith("data:image")) {
+                String[] parts = src.split(",", 2);
+                if (parts.length == 2) {
+                    String base64 = parts[1];
+                    try {
+                        // 실제 postId를 사용하여 S3에 업로드
+                        String s3Url = fileService.saveBase64FileS3(base64, postId, FileEntity.RelatedType.POST);
+                        img.attr("src", s3Url);
+                    } catch (Exception e) {
+                        log.error("S3 업로드 실패: ", e);
+                    }
+                }
+            }
+        }
+        return doc.body().html();
     }
-
-
-    //게시글 전체 조회
-    @Override
-    public List<BoardResponseDto> getBoardList() {
-        //db에서 게시글 전체 조회
-        List<BoardEntity> list = boardRepository.findAll();
-        //스트림처리로 각 게시글 dto로 변환
-        return list.stream()
-                .map(board -> {
-                    int viewCount = viewCountService.getViewCount(board.getPostId()); //Redis에서 조회수 가져오기
-                    int commentCount = getCommentCountFromCache(board.getPostId());
-                    return BoardResponseDto.builder()
-                            .postId(board.getPostId())
-                            .userId(board.getUser().getId())
-                            .userNickname(board.getUser().getNickname())
-                            .category(board.getCategory())
-                            .title(board.getTitle())
-                            .content(board.getContent())
-                            .createdAt(board.getCreatedAt())
-                            .updatedAt(board.getUpdatedAt())
-                            .viewCount(viewCount)
-                            .commentCount(commentCount)
-                            .build();
-                }).collect(Collectors.toList());
-    }
-
-    @Override
-    public List<BoardResponseDto> getBoardListSortedByViews() {
-        List<BoardEntity> list = boardRepository.findAll();
-
-        return list.stream()
-                .map(board -> {
-                    int viewCount = viewCountService.getViewCount(board.getPostId()); //Redis에서 조회수 가져오기
-                    int commentCount = getCommentCountFromCache(board.getPostId());
-                    return BoardResponseDto.builder()
-                            .postId(board.getPostId())
-                            .userId(board.getUser().getId())
-                            .userNickname(board.getUser().getNickname())
-                            .category(board.getCategory())
-                            .title(board.getTitle())
-                            .content(board.getContent())
-                            .createdAt(board.getCreatedAt())
-                            .updatedAt(board.getUpdatedAt())
-                            .viewCount(viewCount)
-                            .commentCount(commentCount)
-                            .build();
-                }).sorted((a, b) -> Integer.compare(b.getViewCount(), a.getViewCount()))
-                .collect(Collectors.toList());
-    }
-
 
     /**
      * UPDATE
      */
     @Override
     public BoardResponseDto updateBoard(Long postId, BoardRequestDto dto) {
-        // 1) 수정할 게시글 찾기
         BoardEntity board = boardRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("게시글이 존재하지 않습니다. id=" + postId));
 
-        // 2) 현재 로그인한 사용자 ID 가져오기
         Long currentUserId = getCurrentUserId();
-
-        // 3) 작성자와 현재 사용자 비교
         if (!board.getUser().getId().equals(currentUserId)) {
             throw new RuntimeException("본인이 작성한 글만 수정할 수 있습니다.");
         }
 
-        // 4) 수정 내용 적용
         if (dto.getTitle() != null) {
             board.setTitle(dto.getTitle());
         }
         if (dto.getContent() != null) {
-            board.setContent(dto.getContent());
+            String finalContent = parseAndUploadBase64Images(dto.getContent());
+            log.debug("▶ updateBoard() 최종 치환된 content 길이: {}",
+                    finalContent != null ? finalContent.length() : 0);
+
+            board.setContent(finalContent);
         }
 
-        // 5) 저장 후 반환
         BoardEntity updated = boardRepository.save(board);
 
-        // 수정 후 캐시 삭제
+        // 캐시 삭제
         String cacheKey = "board:" + postId;
         boardDtoRedisTemplate.delete(cacheKey);
 
-        int viewCount = viewCountService.getViewCount(postId); // Redis에서 조회수 가져오기
+        int viewCount = viewCountService.getViewCount(postId);
         return convertToResponseDto(updated, viewCount);
+    }
+
+    //==============================================================================
+    /**
+     * base64 -> URL 치환 (에디터 HTML에서 <img src="data:image/...">를 찾아 업로드)
+     */
+    private String parseAndUploadBase64Images(String originalHtml) {
+        if (originalHtml == null || originalHtml.trim().isEmpty()) {
+            return originalHtml;
+        }
+
+        Document doc = Jsoup.parseBodyFragment(originalHtml);
+        Elements imgTags = doc.select("img");
+        for (Element img : imgTags) {
+            String src = img.attr("src");
+            if (src != null && src.startsWith("data:image")) {
+                String[] parts = src.split(",", 2);
+                if (parts.length == 2) {
+                    String base64 = parts[1];
+                    try {
+                        // **여기서 fileService.saveBase64FileS3(...) 호출**
+                        String s3Url = fileService.saveBase64FileS3(base64, 0L, FileEntity.RelatedType.POST);
+                        // 치환
+                        img.attr("src", s3Url);
+                    } catch (Exception e) {
+                        log.error("S3 업로드 실패: ", e);
+                    }
+                }
+            }
+        }
+        return doc.body().html();
+    }
+    //==============================================================================
+
+    /**
+     * 게시글 상세조회
+     */
+    @Override
+    public BoardResponseDto getBoard(Long postId) {
+        BoardResponseDto dto = getBoardDtoFromCache(postId);
+        int commentCount = getCommentCountFromCache(postId);
+        dto.setCommentCount(commentCount);
+
+        int updatedViewCount = viewCountService.getViewCount(postId);
+        dto.setViewCount(updatedViewCount);
+
+        return dto;
+    }
+
+    /**
+     * 게시글 전체 조회
+     */
+    @Override
+    public List<BoardResponseDto> getBoardList() {
+        List<BoardEntity> list = boardRepository.findAll();
+        return list.stream()
+                .map(board -> {
+                    int viewCount = viewCountService.getViewCount(board.getPostId());
+                    int commentCount = getCommentCountFromCache(board.getPostId());
+                    return convertToResponseDto(board, viewCount, commentCount);
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<BoardResponseDto> getBoardListSortedByViews() {
+        List<BoardEntity> list = boardRepository.findAll();
+        return list.stream()
+                .map(board -> {
+                    int viewCount = viewCountService.getViewCount(board.getPostId());
+                    int commentCount = getCommentCountFromCache(board.getPostId());
+                    return convertToResponseDto(board, viewCount, commentCount);
+                })
+                .sorted((a, b) -> Integer.compare(b.getViewCount(), a.getViewCount()))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -207,28 +269,22 @@ public class BoardServiceImpl implements BoardService {
      */
     @Override
     public void deleteBoard(Long postId) {
-        // 1) 삭제할 게시글 찾기
         BoardEntity board = boardRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("게시글이 존재하지 않습니다. id=" + postId));
 
-        // 2) 현재 로그인한 사용자 ID 가져오기
         Long currentUserId = getCurrentUserId();
-
-        // 3) 작성자와 현재 사용자 비교
         if (!board.getUser().getId().equals(currentUserId)) {
             throw new RuntimeException("본인이 작성한 글만 삭제할 수 있습니다.");
         }
 
-        // 4) 삭제 수행
         boardRepository.delete(board);
 
-        // 게시글 삭제 후, 전체 및 카테고리별 Redis 카운터 감소
-        redisTemplate.opsForValue().decrement("board:count", 1);  // 전체 게시글 개수 감소
+        redisTemplate.opsForValue().decrement("board:count", 1);
         String categoryKey = "board:count:" + board.getCategory().name();
-        redisTemplate.opsForValue().decrement(categoryKey, 1);      // 해당 카테고리 개수 감소
+        redisTemplate.opsForValue().decrement(categoryKey, 1);
     }
 
-    //board:count로 전체 게시글 개수 조회
+    //==============================================================================
     @Override
     public int getTotalBoardCount() {
         String countStr = redisTemplate.opsForValue().get("board:count");
@@ -237,82 +293,84 @@ public class BoardServiceImpl implements BoardService {
 
     @Override
     public int getBoardCountByCategory(String category) {
-        // category가 "자유" 또는 "질문"과 같이 전달된다고 가정
         String key = "board:count:" + category;
         String countStr = redisTemplate.opsForValue().get(key);
         return (countStr != null) ? Integer.parseInt(countStr) : 0;
     }
 
-    /**
-     * 게시글을 Redis 캐싱에서 조회(없으면 DB에서 조회 후 캐싱)
-     */
     @Override
     public BoardResponseDto getBoardDtoFromCache(Long postId) {
-        //캐시 키 생성
         String key = "board:" + postId;
-        //캐시에서 데이터 조회
         BoardResponseDto cachedDto = boardDtoRedisTemplate.opsForValue().get(key);
         if (cachedDto != null) {
             log.info("📌 Redis에서 게시글 DTO (postId={}) 를 가져옴", postId);
             return cachedDto;
         }
-        //캐시 미스 시 DB에서 조회
         BoardEntity boardEntity = boardRepository.findById(postId)
                 .orElseThrow(() -> new IllegalArgumentException("❌ 게시글이 존재하지 않습니다. postId=" + postId));
 
-        //최신 조회수 가져오기
         int viewCount = viewCountService.getViewCount(postId);
-        //BoardResponseDto로 변환
-        BoardResponseDto dto = convertToResponseDto(boardEntity, viewCount);
-        //변환된 DTO를 Redis에 저장
+        BoardResponseDto dto = convertToResponseDto(boardEntity, viewCount, 0);
         boardDtoRedisTemplate.opsForValue().set(key, dto);
         boardDtoRedisTemplate.expire(key, 10, TimeUnit.MINUTES);
         return dto;
     }
 
-
-    // Redis에서 댓글 수를 조회(없으면 DB에서 계산 후 캐싱)
     public int getCommentCountFromCache(Long postId) {
-        //캐시 키 생성
         String key = "commentCount:" + postId;
-        //캐시에서 값 조회
         String countStr = redisTemplate.opsForValue().get(key);
-        //캐시 값이 존재하는 경우 처리
-        if (countStr != null) { //NULL이 아니라면
+        if (countStr != null) {
             try {
-                return Integer.parseInt(countStr); //정수형으로 변환하여 반환
+                return Integer.parseInt(countStr);
             } catch (NumberFormatException e) {
-                // 파싱 실패 시 DB에서 다시 계산
+                // 파싱 실패 시 DB에서 재계산
             }
         }
-        // 캐시 미스이면 DB에서 계산
         BoardEntity board = boardRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("게시글이 존재하지 않습니다."));
-        int count = commentRepository.countByBoard(board); //해당 게시글에 달린 댓글의 수를 DB에서 직접 계산
-        //계산한 댓글 수를 캐시에 저장
-        redisTemplate.opsForValue().set(key, String.valueOf(count)); //계산된 COUNT 값을 문자열로 변환한 후 캐시에 저장
-        redisTemplate.expire(key, 5, TimeUnit.MINUTES); //캐시된 데이터의 유효기간을 5분으로 설정 -> 5분 후에는 캐시가 만료되어 DB에서 다시 최신 값을 조회
+        int count = commentRepository.countByBoard(board);
+        redisTemplate.opsForValue().set(key, String.valueOf(count));
+        redisTemplate.expire(key, 5, TimeUnit.MINUTES);
         return count;
     }
 
-    /**
-     * 현재 로그인한 사용자 ID 가져오기
-     */
+    @Override
+    public void reinitializeCounters() {
+        long totalCount = boardRepository.count();
+        redisTemplate.opsForValue().set("board:count", String.valueOf(totalCount));
+
+        long freeCount = boardRepository.countByCategory(BoardEntity.Category.자유);
+        long questionCount = boardRepository.countByCategory(BoardEntity.Category.질문);
+
+        try {
+            String freeKey = "board:count:" + URLEncoder.encode(BoardEntity.Category.자유.name(), StandardCharsets.UTF_8);
+            String questionKey = "board:count:" + URLEncoder.encode(BoardEntity.Category.질문.name(), StandardCharsets.UTF_8);
+            redisTemplate.opsForValue().set(freeKey, String.valueOf(freeCount));
+            redisTemplate.opsForValue().set(questionKey, String.valueOf(questionCount));
+
+            logger.info("Redis 카운터 재초기화 완료: 전체={}, 자유={}, 질문={}", totalCount, freeCount, questionCount);
+        } catch (Exception e) {
+            logger.error("Redis 카운터 재초기화 중 오류 발생", e);
+        }
+    }
+
     private Long getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new RuntimeException("사용자가 인증되지 않았습니다.");
         }
-
-        // SecurityContext에서 CustomUserDetails 객체를 가져옴
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        return userDetails.getId();  // User의 ID 가져오기
+        return userDetails.getId();
     }
 
     /**
      * BoardEntity -> BoardResponseDto 변환
      */
     private BoardResponseDto convertToResponseDto(BoardEntity board, int viewCount) {
+        return convertToResponseDto(board, viewCount, 0);
+    }
+
+    private BoardResponseDto convertToResponseDto(BoardEntity board, int viewCount, int commentCount) {
         return BoardResponseDto.builder()
                 .postId(board.getPostId())
                 .userId(board.getUser().getId())
@@ -323,7 +381,7 @@ public class BoardServiceImpl implements BoardService {
                 .createdAt(board.getCreatedAt())
                 .updatedAt(board.getUpdatedAt())
                 .viewCount(viewCount)
+                .commentCount(commentCount)
                 .build();
     }
-
 }

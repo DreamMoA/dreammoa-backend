@@ -2,6 +2,8 @@ package com.garret.dreammoa.domain.repository;
 
 import com.garret.dreammoa.domain.model.BoardEntity;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -21,4 +23,5 @@ public interface BoardRepository extends JpaRepository<BoardEntity, Long> {
 
     //조회수 순으로 모든 게시글 조회
     List<BoardEntity> findAllByOrderByViewCountDesc();
+
 }

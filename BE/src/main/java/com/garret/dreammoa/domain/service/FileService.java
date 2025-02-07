@@ -12,6 +12,11 @@ import org.springframework.http.HttpRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,6 +43,11 @@ public class FileService {
             long maxProfileSize = 2 * 1024 * 1024; // 2MB
             if (multipartFile.getSize() > maxProfileSize) {
                 throw new IllegalArgumentException("프로필 사진은 최대 2MB 까지 업로드할 수 있습니다.");
+            }
+        } else if (relatedType == RelatedType.CHALLENGE) {
+            long maxProfileSize = 2 * 1024 * 1024; // 2MB
+            if (multipartFile.getSize() > maxProfileSize) {
+                throw new IllegalArgumentException("썸네일 사진은 최대 2MB 까지 업로드할 수 있습니다.");
             }
         } else {
             long maxFileSize = 500L * 1024 * 1024; // 500MB
@@ -115,6 +125,21 @@ public class FileService {
         return fileRepository.findByRelatedIdAndRelatedType(relatedId, relatedType);
     }
 
+    public FileEntity updateFile(MultipartFile newFile, Long relatedId, RelatedType relatedType) throws Exception {
+        // 기존 파일 조회
+        Optional<FileEntity> existingFileOpt = fileRepository.findByRelatedIdAndRelatedType(relatedId, relatedType)
+                .stream().findFirst();
+
+        // 기존 파일이 있으면 삭제
+        if (existingFileOpt.isPresent()) {
+            FileEntity existingFile = existingFileOpt.get();
+            amazonS3Client.deleteObject(bucketName, existingFile.getFilePath());
+            fileRepository.delete(existingFile);
+        }
+
+        // 새 파일 저장
+        return saveFile(newFile, relatedId, relatedType);
+    }
     /**
      * S3에서 파일 삭제
      */
@@ -128,6 +153,49 @@ public class FileService {
     public Optional<FileEntity> getProfilePicture(Long userId) {
         return fileRepository.findByRelatedIdAndRelatedType(userId, RelatedType.PROFILE)
                 .stream().findFirst();
+    }
+
+    public String saveBase64FileS3(String base64Data, Long relatedId, RelatedType relatedType) throws IOException {
+        // base64 디코딩
+        byte[] decodedBytes = Base64.getDecoder().decode(base64Data);
+
+        // 파일명 생성 (S3 내에 저장될 키)
+        //    예: folder + UUID + 확장자
+        String folder = "post/"; // relatedType이 PROFILE이면 "profile/", etc.
+        String uniqueName = generateUniqueFilename() + ".png"; // png라 가정
+        String s3Key = folder + uniqueName;
+
+        // S3 업로드
+        ObjectMetadata metadata = new ObjectMetadata();
+        metadata.setContentLength(decodedBytes.length);
+        metadata.setContentType("image/png");
+
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(decodedBytes);
+        amazonS3Client.putObject(bucketName, s3Key, inputStream, metadata);
+
+        // 업로드된 S3 URL 얻기
+        String s3Url = amazonS3Client.getUrl(bucketName, s3Key).toString();
+
+        // file 테이블에 Insert
+        FileEntity fileEntity = FileEntity.builder()
+                .relatedId(relatedId)
+                .relatedType(relatedType)
+                .fileName(uniqueName)   // 실제 S3 키
+                .filePath(s3Key)        // "post/고유아이디/abc123.png" 등
+                .fileUrl(s3Url)         // S3 접근 URL
+                .fileType("image/png")
+                .build();
+
+        fileRepository.save(fileEntity);
+
+        // S3 URL 반환
+        return s3Url;
+    }
+
+    private String generateUniqueFilename() {
+        String uuid = UUID.randomUUID().toString().substring(0, 8);
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        return uuid + "_" + timestamp;
     }
 
 }
