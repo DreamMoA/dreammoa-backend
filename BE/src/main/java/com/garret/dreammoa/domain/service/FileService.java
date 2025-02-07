@@ -125,6 +125,21 @@ public class FileService {
         return fileRepository.findByRelatedIdAndRelatedType(relatedId, relatedType);
     }
 
+    public FileEntity updateFile(MultipartFile newFile, Long relatedId, RelatedType relatedType) throws Exception {
+        // 기존 파일 조회
+        Optional<FileEntity> existingFileOpt = fileRepository.findByRelatedIdAndRelatedType(relatedId, relatedType)
+                .stream().findFirst();
+
+        // 기존 파일이 있으면 삭제
+        if (existingFileOpt.isPresent()) {
+            FileEntity existingFile = existingFileOpt.get();
+            amazonS3Client.deleteObject(bucketName, existingFile.getFilePath());
+            fileRepository.delete(existingFile);
+        }
+
+        // 새 파일 저장
+        return saveFile(newFile, relatedId, relatedType);
+    }
     /**
      * S3에서 파일 삭제
      */

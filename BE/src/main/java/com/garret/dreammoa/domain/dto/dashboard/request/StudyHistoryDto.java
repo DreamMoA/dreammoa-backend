@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 public class StudyHistoryDto {
     private Long challengeLogId;
     private Long challengeId;
-    private String challengeName;
+    private String challengeTitle;
     private LocalDate recordDate;
     private LocalDateTime pureStudyTime;
     private LocalDateTime screenTime;

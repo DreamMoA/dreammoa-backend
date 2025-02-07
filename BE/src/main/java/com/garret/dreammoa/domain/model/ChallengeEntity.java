@@ -35,9 +35,6 @@ public class ChallengeEntity {
 
     private Boolean isPrivate;
 
-    @Column(length = 255)
-    private String status;
-
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
@@ -69,5 +66,16 @@ public class ChallengeEntity {
                 .tag(tag)
                 .build();
         this.challengeTags.add(challengeTag);
+    }
+    public void update(String title, String description, Integer maxParticipants,
+                       Boolean isPrivate, LocalDateTime startDate,
+                       LocalDateTime expireDate, Integer standard) {
+        this.title = title;
+        this.description = description;
+        this.maxParticipants = maxParticipants;
+        this.isPrivate = isPrivate;
+        this.startDate = startDate;
+        this.expireDate = expireDate;
+        this.standard = standard;
     }
 }

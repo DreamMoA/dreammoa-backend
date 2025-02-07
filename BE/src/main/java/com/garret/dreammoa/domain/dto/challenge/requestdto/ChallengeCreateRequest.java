@@ -10,7 +10,7 @@ import java.util.List;
 
 @Getter
 @Setter
-public class ChallengeCreateRequest extends ChallengeRequest {
+public class ChallengeCreateRequest {
 
     @NotBlank(message = "챌린지 제목은 필수입니다.")
     private String title;

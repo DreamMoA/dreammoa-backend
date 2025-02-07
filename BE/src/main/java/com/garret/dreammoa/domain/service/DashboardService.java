@@ -47,7 +47,7 @@ public class DashboardService {
 
         return logs.stream().map(log -> {
             Long challengeId = log.getChallenge().getChallengeId();
-            String challengeName = log.getChallenge().getName();
+            String challengeTitle = log.getChallenge().getTitle();
 
             // 챌린지 썸네일 조회
             Optional<FileEntity> thumbnailFile = fileRepository.findByRelatedIdAndRelatedType(challengeId, FileEntity.RelatedType.CHALLENGE)
@@ -57,7 +57,7 @@ public class DashboardService {
             return StudyHistoryDto.builder()
                     .challengeLogId(log.getId())
                     .challengeId(challengeId)
-                    .challengeName(challengeName)
+                    .challengeTitle(challengeTitle)
                     .recordDate(log.getRecordDate())
                     .pureStudyTime(log.getPureStudyTime())
                     .screenTime(log.getScreenTime())
