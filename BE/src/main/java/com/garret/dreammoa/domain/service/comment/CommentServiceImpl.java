@@ -73,6 +73,8 @@ public class CommentServiceImpl implements CommentService{
         String key = "commentCount:" + postId;
         redisTemplate.opsForValue().increment(key);
 
+        boardRepository.incrementCommentCount(postId);
+
         //ResponseDto로 변환 및 반환
         return convertToResponseDTO(savedComment);
     }
@@ -179,6 +181,8 @@ public class CommentServiceImpl implements CommentService{
         // Redis 댓글 수 업데이트: 해당 게시글의 댓글 수 감소 (키: "commentCount:{postId}")
         String key = "commentCount:" + postId;
         redisTemplate.opsForValue().decrement(key);
+
+        boardRepository.decrementCommentCount(postId);
     }
 
     // 특정 게시글의 모든 댓글 조회 (추가적인 필터링 및 정렬 가능)

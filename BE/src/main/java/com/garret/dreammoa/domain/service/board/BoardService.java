@@ -4,6 +4,7 @@ import com.garret.dreammoa.domain.dto.board.requestdto.BoardRequestDto;
 import com.garret.dreammoa.domain.dto.board.responsedto.BoardResponseDto;
 import com.garret.dreammoa.domain.model.BoardEntity;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -34,6 +35,18 @@ public interface BoardService {
     BoardResponseDto getBoardDtoFromCache(Long postId);
 
     int getCommentCountFromCache(Long postId);
+
+    //최신순 정렬 + 페이징
+    Page<BoardResponseDto> getBoardListSortedByNewest(Pageable pageable, BoardEntity.Category category);
+
+    //조회수 기준 정렬(내림차순) + 페이징
+    Page<BoardResponseDto> getBoardListSortedByViewCount(Pageable pageable, BoardEntity.Category category);
+
+    //좋아요수 기준 정렬(내림차순) + 페이징
+    Page<BoardResponseDto> getBoardListSortedByLikeCount(Pageable pageable, BoardEntity.Category category);
+
+    //댓글수 기준 정렬(내림차순) + 페이징
+    Page<BoardResponseDto> getBoardListSortedByCommentCount(Pageable pageable, BoardEntity.Category category);
 
     /**
      * DB의 실제 게시글 개수로 Redis 카운터를 재초기화한다.
