@@ -113,7 +113,8 @@ public class SecurityConfig {
                                 .requestMatchers(HttpMethod.GET, "api/likes/**").permitAll()
                                 //                        .requestMatchers("api/likes/**").authenticated()
                                 .requestMatchers("/login","/", "/error", "/refresh", "/openvidu/**", "/join","/email-find","/pw-find",
-                                        "/send-verification-code", "/verify-email-code", "/check-email", "/check-nickname").permitAll()
+                                        "/send-verification-code", "/verify-email-code", "/check-email", "/check-nickname", "/tags", "/user-tags")
+                                .permitAll()
                                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                                 .requestMatchers("/files/**").permitAll()
 //                                .requestMatchers("/admin/**").hasRole("ADMIN")
