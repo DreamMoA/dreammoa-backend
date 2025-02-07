@@ -8,9 +8,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 
 public interface ParticipantRepository extends JpaRepository<ParticipantEntity, Long> {
-    long countByChallengeId(Long challengeId);
+    long countByChallenge_ChallengeId(Long challengeId);
 
-    boolean existsByChallengeIdAndUserId(Long challengeId, Long id);
+    boolean existsByChallengeAndUser(ChallengeEntity challenge, UserEntity user);
 
     Optional<ParticipantEntity> findByUserAndChallenge(UserEntity user, ChallengeEntity challenge);
 }

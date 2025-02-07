@@ -17,7 +17,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -146,7 +145,7 @@ public class ChallengeService {
 
         UserEntity user = securityUtil.getCurrentUser();
         // 강퇴 이력 조회
-        Optional<ParticipantHistoryEntity> kickedHistory = participantHistoryRepository.findByChallengeIdAndUserIdAndStatus(challengeId, user.getId(), ParticipantHistoryEntity.Status.KICKED);
+        Optional<ParticipantHistoryEntity> kickedHistory = participantHistoryRepository.findByChallenge_ChallengeIdAndUser_IdAndStatus(challengeId, user.getId(), ParticipantHistoryEntity.Status.KICKED);
         if (kickedHistory.isPresent()) {
             String kickedByName = kickedHistory.get().getActionByUser().getName();  // 강퇴한 사람의 이름
             return ResponseEntity.badRequest()
@@ -154,12 +153,12 @@ public class ChallengeService {
         }
         // 최대참여자 수 넘었는지 조회
         long maxParticipants = challenge.getMaxParticipants();
-        long currentParticipants = participantRepository.countByChallengeId(challengeId);
+        long currentParticipants = participantRepository.countByChallenge_ChallengeId(challengeId);
         if (currentParticipants >= maxParticipants) {
             throw new IllegalStateException("챌린지 참여 인원이 가득 찼습니다.");
         }
         // 방에 이미 참여하고있는지 확인
-        boolean alreadyJoined = participantRepository.existsByChallengeIdAndUserId(challengeId, user.getId());
+        boolean alreadyJoined = participantRepository.existsByChallengeAndUser(challenge, user);
         if (alreadyJoined) {
             throw new IllegalStateException("이미 해당 챌린지에 참여 중입니다.");
         }
@@ -199,7 +198,7 @@ public class ChallengeService {
 //        ChallengeResponse challengeResponse = new ChallengeResponse(challenge, sessionId);
 //
 //        return ResponseEntity.ok(challengeResponse);
-
+        return null;
     }
 
     // status 처리
