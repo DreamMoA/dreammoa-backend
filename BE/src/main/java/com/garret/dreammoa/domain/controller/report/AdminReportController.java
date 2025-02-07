@@ -1,10 +1,9 @@
-package com.garret.dreammoa.domain.controller.Report;
+package com.garret.dreammoa.domain.controller.report;
 
 import com.garret.dreammoa.domain.dto.report.response.ReportDetailResponseDto;
 import com.garret.dreammoa.domain.dto.report.response.ReportListResponseDto;
 import com.garret.dreammoa.domain.service.ReportService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
