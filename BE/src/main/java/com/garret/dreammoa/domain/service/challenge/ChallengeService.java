@@ -3,6 +3,8 @@ package com.garret.dreammoa.domain.service.challenge;
 import com.garret.dreammoa.domain.dto.challenge.requestdto.ChallengeCreateRequest;
 import com.garret.dreammoa.domain.dto.challenge.requestdto.ChallengeUpdateRequest;
 import com.garret.dreammoa.domain.dto.challenge.responsedto.ChallengeResponse;
+import com.garret.dreammoa.domain.dto.challenge.responsedto.MyChallengeDetailResponseDto;
+import com.garret.dreammoa.domain.dto.challenge.responsedto.MyChallengeResponseDto;
 import com.garret.dreammoa.domain.model.*;
 import com.garret.dreammoa.domain.repository.ChallengeRepository;
 import com.garret.dreammoa.domain.repository.ParticipantHistoryRepository;
@@ -19,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -214,5 +217,130 @@ public class ChallengeService {
 //    } else {
 //        status = "종료";  // 종료일이 과거일 경우
 //    }
+
+    @Transactional
+    public List<MyChallengeResponseDto> getMyChallenges() {
+        UserEntity currentUser = securityUtil.getCurrentUser();
+
+        //사용자가 참여한 ParticipantEntity 목록 조회
+        List<ParticipantEntity> participations = participantRepository.findByUser(currentUser);
+
+        //각 참여 내역에서 챌린지 정보를 추출하여 DTO로 변환
+        return participations.stream()
+                .map(ParticipantEntity::getChallenge)
+                .distinct()
+                .map(challenge -> {
+                    // 챌린지에 달린 태그명 리스트 생성
+                    List<String> tagNames = challenge.getChallengeTags().stream()
+                            .map(challengeTag -> challengeTag.getTag().getTagName())
+                            .collect(Collectors.toList());
+
+                    UserEntity host = challenge.getHost();
+                    String profilePictureUrl = null;
+                    if(host.getProfileImage() != null) {
+                        profilePictureUrl = host.getProfileImage().getFileUrl();
+                    }
+
+                    MyChallengeResponseDto.HostInfo hostInfo = new MyChallengeResponseDto.HostInfo();
+                    hostInfo.setHostId(host.getId());
+                    hostInfo.setNickname(host.getNickname());
+                    hostInfo.setProfilePictureUrl(profilePictureUrl);
+
+                    // DTO 생성
+                    MyChallengeResponseDto dto = new MyChallengeResponseDto();
+                    dto.setChallengeId(challenge.getChallengeId());
+                    dto.setTitle(challenge.getTitle());
+                    dto.setDescription(challenge.getDescription());
+                    dto.setStartDate(challenge.getStartDate());
+                    dto.setExpireDate(challenge.getExpireDate());
+                    dto.setIsActive(challenge.getIsActive());
+                    dto.setTags(tagNames);
+                    dto.setHost(hostInfo);
+
+                    return dto;
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 현재 로그인한 사용자가 참여 중인 특정 챌린지의 상세 정보를 DTO로 반환
+     * @param challengeId 조회할 챌린지 id
+     * @return MyChallengeDetailResponseDto
+     * @throws IllegalArgumentException 사용자가 해당 챌린지에 참여 중이 아닐 경우
+     */
+    @Transactional
+    public MyChallengeDetailResponseDto getMyChallengeDetail(Long challengeId) {
+        // 현재 로그인한 사용자 조회
+        UserEntity currentUser = securityUtil.getCurrentUser();
+
+        // 챌린지 엔티티 조회
+        ChallengeEntity challenge = challengeRepository.findById(challengeId)
+                .orElseThrow(() -> new IllegalArgumentException("챌린지를 찾을 수 없습니다."));
+
+        // 현재 사용자가 해당 챌린지에 참여 중인지 확인
+        boolean isParticipant = participantRepository.findByUser(currentUser)
+                .stream()
+                .anyMatch(participant -> participant.getChallenge().getChallengeId().equals(challengeId));
+        if (!isParticipant) {
+            throw new IllegalArgumentException("해당 챌린지에 참여 중이 아닙니다.");
+        }
+
+        // DTO로 변환
+        MyChallengeDetailResponseDto dto = new MyChallengeDetailResponseDto();
+        dto.setChallengeId(challenge.getChallengeId());
+        dto.setTitle(challenge.getTitle());
+        dto.setDescription(challenge.getDescription());
+        dto.setStartDate(challenge.getStartDate());
+        dto.setExpireDate(challenge.getExpireDate());
+        dto.setIsActive(challenge.getIsActive());
+        dto.setMaxParticipants(challenge.getMaxParticipants());
+        dto.setStandard(challenge.getStandard());
+
+        // 챌린지에 달린 태그 목록 추출
+        List<String> tagNames = challenge.getChallengeTags().stream()
+                .map(challengeTag -> challengeTag.getTag().getTagName())
+                .collect(Collectors.toList());
+        dto.setTags(tagNames);
+
+        // 방장(호스트) 정보 설정
+        UserEntity host = challenge.getHost();
+        MyChallengeDetailResponseDto.HostInfo hostInfo = new MyChallengeDetailResponseDto.HostInfo();
+        hostInfo.setHostId(host.getId());
+        hostInfo.setNickname(host.getNickname());
+        String profilePictureUrl = (host.getProfileImage() != null) ? host.getProfileImage().getFileUrl() : null;
+        hostInfo.setProfilePictureUrl(profilePictureUrl);
+        dto.setHost(hostInfo);
+
+        return dto;
+    }
+
+    /**
+     * 현재 로그인한 사용자가 참여 중인 챌린지에서 탈퇴합니다.
+     * 호스트인 경우는 탈퇴가 불가능합니다.
+     *
+     * @param challengeId 탈퇴할 챌린지 id
+     * @throws IllegalArgumentException 챌린지를 찾지 못하거나 참여 중이 아니거나, 호스트인 경우
+     */
+    @Transactional
+    public void quitChallenge(Long challengeId) {
+        // 현재 로그인한 사용자 조회
+        UserEntity currentUser = securityUtil.getCurrentUser();
+
+        // 챌린지 조회
+        ChallengeEntity challenge = challengeRepository.findById(challengeId)
+                .orElseThrow(() -> new IllegalArgumentException("챌린지를 찾을 수 없습니다."));
+
+        // 현재 사용자가 해당 챌린지에 참여 중인지 조회
+        ParticipantEntity participant = participantRepository.findByUserAndChallenge(currentUser, challenge)
+                .orElseThrow(() -> new IllegalArgumentException("해당 챌린지에 참여 중이 아닙니다."));
+
+        // 호스트는 탈퇴할 수 없도록 처리
+        if (participant.getIsHost() != null && participant.getIsHost()) {
+            throw new IllegalArgumentException("호스트는 챌린지를 그만둘 수 없습니다.");
+        }
+
+        // 참여 기록 삭제 (탈퇴 처리)
+        participantRepository.delete(participant);
+    }
 }
 
