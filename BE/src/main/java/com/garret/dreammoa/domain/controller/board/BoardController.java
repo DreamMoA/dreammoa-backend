@@ -11,7 +11,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -126,75 +129,44 @@ public class BoardController {
         return ResponseEntity.ok(count);
     }
 
+    //게시글 최신순 정렬
+    @GetMapping("/sorted-by-newest")
+    public ResponseEntity<Page<BoardResponseDto>> getBoardListSortedByNewest(
+            @RequestParam(required = false, defaultValue = "자유") String category,
+            @PageableDefault(page = 0, size = 7) Pageable pageable) {
+        BoardEntity.Category boardCategory = BoardEntity.Category.valueOf(category);
+        Page<BoardResponseDto> result = boardService.getBoardListSortedByNewest(pageable, boardCategory);
+        return ResponseEntity.ok(result);
+    }
+
     //게시글 조회수순 정렬
     @GetMapping("/sorted-by-views")
-    public ResponseEntity<List<BoardResponseDto>> getBoardListSortedByViews() {
-        List<BoardResponseDto> list = boardService.getBoardListSortedByViews();
-        return ResponseEntity.ok(list);
+    public ResponseEntity<Page<BoardResponseDto>> getBoardListSortedByViews(
+            @RequestParam(required = false, defaultValue = "자유") String category,
+            @PageableDefault(page = 0, size = 7) Pageable pageable) {
+        // 전달받은 category 문자열을 Enum으로 변환
+        BoardEntity.Category boardCategory = BoardEntity.Category.valueOf(category);
+        Page<BoardResponseDto> result = boardService.getBoardListSortedByViewCount(pageable, boardCategory);
+        return ResponseEntity.ok(result);
     }
 
     //게시글 좋아요순 정렬
     @GetMapping("/sorted-by-likes")
-    public ResponseEntity<List<BoardResponseDto>> getBoardListSortedByLikes() {
-        // 1) 모든 게시글 조회
-        List<BoardEntity> boardList = boardRepository.findAll();
-
-        // 2) 각 게시글에 대해 likeCount를 가져와서 ResponseDto로 변환
-        List<BoardResponseDto> responseList = boardList.stream()
-                .map(board -> {
-                    int likeCount = likeService.getLikeCount(board.getPostId()); // Redis 등에서 호출
-
-                    return BoardResponseDto.builder()
-                            .postId(board.getPostId())
-                            .userId(board.getUser().getId())
-                            .userNickname(board.getUser().getNickname())
-                            .category(board.getCategory())
-                            .title(board.getTitle())
-                            .content(board.getContent())
-                            .createdAt(board.getCreatedAt())
-                            .updatedAt(board.getUpdatedAt())
-                            // DB에 있는 viewCount가 Long 타입이므로, int 변환
-                            .viewCount(board.getViewCount().intValue())
-                            .likeCount(likeCount)
-                            .build();
-                })
-                // 3) 좋아요 개수 기준으로 내림차순 정렬
-                .sorted((dtoA, dtoB) -> Integer.compare(dtoB.getLikeCount(), dtoA.getLikeCount()))
-                .collect(Collectors.toList());
-
-        // 4) 결과 반환
-        return ResponseEntity.ok(responseList);
+    public ResponseEntity<Page<BoardResponseDto>> getBoardListSortedByLikes(
+            @RequestParam(required = false, defaultValue = "자유") String category,
+            @PageableDefault(page = 0, size = 7) Pageable pageable) {
+        BoardEntity.Category boardCategory = BoardEntity.Category.valueOf(category);
+        Page<BoardResponseDto> result = boardService.getBoardListSortedByLikeCount(pageable, boardCategory);
+        return ResponseEntity.ok(result);
     }
 
     //게시글 댓글 순 정렬
     @GetMapping("/sorted-by-comments")
-    public ResponseEntity<List<BoardResponseDto>> getBoardListSortedByComments() {
-        List<BoardEntity> boardList = boardRepository.findAll(); //db에 저장된 모든 게시글 조회
-
-        //각 게시글 데이터를 DTO로 매핑
-        List<BoardResponseDto> responseList = boardList.stream()
-                .map(board -> {
-                    int viewCount = viewCountService.getViewCount(board.getPostId());
-                    int likeCount = likeService.getLikeCount(board.getPostId());
-                    int commentCount = boardService.getCommentCountFromCache(board.getPostId());
-                    return BoardResponseDto.builder()
-                            .postId(board.getPostId())
-                            .userId(board.getUser().getId())
-                            .userNickname(board.getUser().getNickname())
-                            .category(board.getCategory())
-                            .title(board.getTitle())
-                            .content(board.getContent())
-                            .createdAt(board.getCreatedAt())
-                            .updatedAt(board.getUpdatedAt())
-                            .viewCount(viewCount)
-                            .likeCount(likeCount)
-                            .commentCount(commentCount)
-                            .build();
-                })
-                .sorted((a, b) -> Integer.compare(b.getCommentCount(), a.getCommentCount())) //댓글 수 기준 내림차순 정렬
-                .collect(Collectors.toList()); //정렬된 스트림을 다시 리스트로 수집
-
-        //responseList : 댓글 수 기준으로 정렬된 게시글 DTO들의 리스트가 저장
-        return ResponseEntity.ok(responseList); //응답 생성
+    public ResponseEntity<Page<BoardResponseDto>> getBoardListSortedByComments(
+            @RequestParam(required = false, defaultValue = "자유") String category,
+            @PageableDefault(page = 0, size = 7) Pageable pageable) {
+        BoardEntity.Category boardCategory = BoardEntity.Category.valueOf(category);
+        Page<BoardResponseDto> result = boardService.getBoardListSortedByCommentCount(pageable, boardCategory);
+        return ResponseEntity.ok(result);
     }
 }
