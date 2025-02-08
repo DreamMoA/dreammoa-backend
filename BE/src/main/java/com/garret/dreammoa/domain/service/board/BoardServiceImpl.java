@@ -1,5 +1,6 @@
 package com.garret.dreammoa.domain.service.board;
 
+import com.garret.dreammoa.domain.document.BoardDocument;
 import com.garret.dreammoa.domain.dto.board.requestdto.BoardRequestDto;
 import com.garret.dreammoa.domain.dto.board.responsedto.BoardResponseDto;
 import com.garret.dreammoa.domain.dto.user.CustomUserDetails;
@@ -7,6 +8,7 @@ import com.garret.dreammoa.domain.model.BoardEntity;
 import com.garret.dreammoa.domain.model.FileEntity;
 import com.garret.dreammoa.domain.model.UserEntity;
 import com.garret.dreammoa.domain.repository.BoardRepository;
+import com.garret.dreammoa.domain.repository.BoardSearchRepository;
 import com.garret.dreammoa.domain.repository.CommentRepository;
 import com.garret.dreammoa.domain.repository.UserRepository;
 import com.garret.dreammoa.domain.service.FileService;
@@ -51,6 +53,7 @@ public class BoardServiceImpl implements BoardService {
     private final @Qualifier("boardDtoRedisTemplate") RedisTemplate<String, BoardResponseDto> boardDtoRedisTemplate;
     // 문자열 전용 RedisTemplate (댓글 수와 같은 단순 값을 위한 캐싱)
     private final RedisTemplate<String, String> redisTemplate;
+    private final BoardSearchRepository boardSearchRepository;
 
     @PostConstruct
     public void initializeBoardCount() {
@@ -103,6 +106,9 @@ public class BoardServiceImpl implements BoardService {
         // 치환된 최종 HTML을 다시 board 객체에 반영한 후 UPDATE
         savedBoard.setContent(finalContent);
         BoardEntity updatedBoard = boardRepository.saveAndFlush(savedBoard);
+
+        // Elasticsearch에 동기화
+        syncToElasticsearch(updatedBoard);
 
         // 트랜잭션 커밋 후 Redis 업데이트
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -180,6 +186,9 @@ public class BoardServiceImpl implements BoardService {
         }
 
         BoardEntity updated = boardRepository.save(board);
+
+        // Elasticsearch에 동기화
+        syncToElasticsearch(updated);
 
         // 캐시 삭제
         String cacheKey = "board:" + postId;
@@ -277,6 +286,9 @@ public class BoardServiceImpl implements BoardService {
             throw new RuntimeException("본인이 작성한 글만 삭제할 수 있습니다.");
         }
 
+        // Elasticsearch에서 해당 게시글 삭제
+        boardSearchRepository.deleteById(postId);
+
         boardRepository.delete(board);
 
         redisTemplate.opsForValue().decrement("board:count", 1);
@@ -354,6 +366,28 @@ public class BoardServiceImpl implements BoardService {
         }
     }
 
+    /**
+     * Elasticsearch 동기화 (MySQL -> Elasticsearch)
+     */
+    private void syncToElasticsearch(BoardEntity board) {
+        BoardDocument boardDocument = BoardDocument.builder()
+                .id(board.getPostId())
+                .userId(board.getUser().getId())
+                .userNickname(board.getUser().getNickname())
+                .category(board.getCategory().name())
+                .title(board.getTitle())
+                .content(board.getContent())
+                .createdAt(board.getCreatedAt())
+                .updatedAt(board.getUpdatedAt())
+                .viewCount(board.getViewCount().intValue())
+                .build();
+
+        boardSearchRepository.save(boardDocument);
+        log.info("✅ Elasticsearch 동기화 완료 - 게시글 ID: {}", board.getPostId());
+    }
+
+
+
     private Long getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -384,4 +418,6 @@ public class BoardServiceImpl implements BoardService {
                 .commentCount(commentCount)
                 .build();
     }
+
+
 }

@@ -1,0 +1,14 @@
+package com.garret.dreammoa.domain.service.boardsearch;
+
+import com.garret.dreammoa.domain.document.BoardDocument;
+
+import java.util.List;
+
+public interface BoardSearchService {
+    /**
+     * 키워드가 포함된 게시글 검색
+     * @param keyword 검색할 키워드
+     * @return 검색된 게시글 목록
+     */
+    List<BoardDocument> searchBoards(String keyword);
+}
