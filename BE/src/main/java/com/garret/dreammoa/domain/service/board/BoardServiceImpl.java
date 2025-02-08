@@ -12,6 +12,7 @@ import com.garret.dreammoa.domain.repository.BoardSearchRepository;
 import com.garret.dreammoa.domain.repository.CommentRepository;
 import com.garret.dreammoa.domain.repository.UserRepository;
 import com.garret.dreammoa.domain.service.FileService;
+import com.garret.dreammoa.domain.service.like.LikeService;
 import com.garret.dreammoa.domain.service.viewcount.ViewCountService;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,8 @@ import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
@@ -45,11 +48,12 @@ import java.util.stream.Collectors;
 public class BoardServiceImpl implements BoardService {
 
     private final FileService fileService;
+    private final ViewCountService viewCountService;
+    private final LikeService likeService;
     private final BoardRepository boardRepository;
     private final UserRepository userRepository;
     private final CommentRepository commentRepository;
     private final Logger logger = LoggerFactory.getLogger(BoardServiceImpl.class);
-    private final ViewCountService viewCountService;
     private final @Qualifier("boardDtoRedisTemplate") RedisTemplate<String, BoardResponseDto> boardDtoRedisTemplate;
     // 문자열 전용 RedisTemplate (댓글 수와 같은 단순 값을 위한 캐싱)
     private final RedisTemplate<String, String> redisTemplate;
@@ -345,6 +349,103 @@ public class BoardServiceImpl implements BoardService {
         redisTemplate.expire(key, 5, TimeUnit.MINUTES);
         return count;
     }
+
+    @Override
+    public Page<BoardResponseDto> getBoardListSortedByNewest(Pageable pageable, BoardEntity.Category category) {
+        // Repository에서 카테고리 필터링 후 생성일자(createdAt) 내림차순 정렬 및 페이징 처리
+        Page<BoardEntity> boardPage = boardRepository.findAllByCategoryOrderByCreatedAtDesc(category, pageable);
+
+        // BoardEntity -> BoardResponseDto 변환
+        Page<BoardResponseDto> dtoPage = boardPage.map(board -> {
+            // 만약 DB의 viewCount가 최신값이라고 가정 (또는 필요 시 viewCountService를 호출)
+            int viewCount = board.getViewCount().intValue();
+            return BoardResponseDto.builder()
+                    .postId(board.getPostId())
+                    .userId(board.getUser().getId())
+                    .userNickname(board.getUser().getNickname())
+                    .category(board.getCategory())
+                    .title(board.getTitle())
+                    .content(board.getContent())
+                    .createdAt(board.getCreatedAt())
+                    .updatedAt(board.getUpdatedAt())
+                    .viewCount(viewCount)
+                    .likeCount(likeService.getLikeCount(board.getPostId()))
+                    .commentCount(0)  // 댓글 수 처리는 필요 시 구현
+                    .build();
+        });
+        return dtoPage;
+    }
+
+    @Override
+    public Page<BoardResponseDto> getBoardListSortedByViewCount(Pageable pageable, BoardEntity.Category category) {
+        // 올바른 Repository 메서드를 호출합니다.
+        Page<BoardEntity> boardPage = boardRepository.findAllByCategoryOrderByViewCountDesc(category, pageable);
+
+        Page<BoardResponseDto> dtoPage = boardPage.map(board -> {
+            int viewCount = board.getViewCount().intValue();
+            return BoardResponseDto.builder()
+                    .postId(board.getPostId())
+                    .userId(board.getUser().getId())
+                    .userNickname(board.getUser().getNickname())
+                    .category(board.getCategory())
+                    .title(board.getTitle())
+                    .content(board.getContent())
+                    .createdAt(board.getCreatedAt())
+                    .updatedAt(board.getUpdatedAt())
+                    .viewCount(viewCount)
+                    .likeCount(likeService.getLikeCount(board.getPostId()))
+                    .commentCount(0) // 댓글 수 처리는 필요에 따라 구현
+                    .build();
+        });
+        return dtoPage;
+    }
+
+    @Override
+    public Page<BoardResponseDto> getBoardListSortedByLikeCount(Pageable pageable, BoardEntity.Category category) {
+        // DB에서 해당 카테고리의 게시글을 좋아요 수(likeCount) 기준 내림차순 정렬 및 페이징 처리
+        Page<BoardEntity> boardPage = boardRepository.findAllByCategoryOrderByLikeCountDesc(category, pageable);
+
+        Page<BoardResponseDto> dtoPage = boardPage.map(board -> {
+            return BoardResponseDto.builder()
+                    .postId(board.getPostId())
+                    .userId(board.getUser().getId())
+                    .userNickname(board.getUser().getNickname())
+                    .category(board.getCategory())
+                    .title(board.getTitle())
+                    .content(board.getContent())
+                    .createdAt(board.getCreatedAt())
+                    .updatedAt(board.getUpdatedAt())
+                    .viewCount(board.getViewCount().intValue())
+                    .likeCount(board.getLikeCount())  // DB 컬럼의 likeCount 사용
+                    .commentCount(0)  // 댓글 수는 필요에 따라 구현
+                    .build();
+        });
+        return dtoPage;
+    }
+
+    @Override
+    public Page<BoardResponseDto> getBoardListSortedByCommentCount(Pageable pageable, BoardEntity.Category category) {
+        // DB에서 commentCount를 기준으로 정렬하여 페이징 처리
+        Page<BoardEntity> boardPage = boardRepository.findAllByCategoryOrderByCommentCountDesc(category, pageable);
+
+        Page<BoardResponseDto> dtoPage = boardPage.map(board -> {
+            return BoardResponseDto.builder()
+                    .postId(board.getPostId())
+                    .userId(board.getUser().getId())
+                    .userNickname(board.getUser().getNickname())
+                    .category(board.getCategory())
+                    .title(board.getTitle())
+                    .content(board.getContent())
+                    .createdAt(board.getCreatedAt())
+                    .updatedAt(board.getUpdatedAt())
+                    .viewCount(board.getViewCount().intValue())
+                    .likeCount(board.getLikeCount())
+                    .commentCount(board.getCommentCount())
+                    .build();
+        });
+        return dtoPage;
+    }
+
 
     @Override
     public void reinitializeCounters() {

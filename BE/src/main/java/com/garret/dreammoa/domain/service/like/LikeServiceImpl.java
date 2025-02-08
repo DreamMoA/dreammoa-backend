@@ -52,6 +52,9 @@ public class LikeServiceImpl implements LikeService {
 
         //Redis의 Set에 userId를 추가
         redisTemplate.opsForSet().add(key, userId.toString());
+        // DB에 LikeEntity는 따로 동기화하는 로직이 있다 하더라도,
+        // 실시간 반영을 위해 BoardEntity의 likeCount 컬럼도 업데이트합니다.
+        boardRepository.incrementLikeCount(postId);
 
         log.info("✅ 게시글(postId={})에 사용자(userId={})가 좋아요 추가", postId, userId);
     }
@@ -83,6 +86,8 @@ public class LikeServiceImpl implements LikeService {
 
         //DB에서도 좋아요 기록 삭제
         likeRepository.deleteByUser_IdAndBoard_PostId(userId, postId);
+
+        boardRepository.decrementLikeCount(postId);
 
         log.info("✅ 게시글(postId={})에 사용자(userId={})가 좋아요 취소", postId, userId);
     }

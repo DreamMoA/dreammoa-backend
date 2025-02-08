@@ -71,22 +71,20 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         // 🔹 프로필 이미지 저장
         saveProfileImage(user, userInfo.getProfileImageUrl());
 
-        // 🔹 JWT 토큰 생성 (중복 제거)
+        // 🔹 JWT 토큰 생성
         String accessToken = jwtUtil.createAccessToken(user.getId(), user.getEmail(), user.getName(), user.getNickname(), String.valueOf(user.getRole()));
         String refreshToken = jwtUtil.createRefreshToken(user);
 
         // 🔹 쿠키에 토큰 저장
+        // ✅ access_token: HttpOnly X (프론트에서 접근 가능)
         CookieUtil.addCookie(response, "access_token", accessToken, (int) jwtUtil.getAccessTokenExpirationTime());
+
+        // ✅ refresh_token: HttpOnly O (보안 강화)
         CookieUtil.addHttpOnlyCookie(response, "refresh_token", refreshToken, (int) jwtUtil.getRefreshTokenExpirationTime());
 
-        // 🔹 일반 로그인과 동일한 JSON 응답 반환
-        response.setContentType("application/json;charset=UTF-8");
-        response.setStatus(HttpServletResponse.SC_OK);
-        new ObjectMapper().writeValue(response.getWriter(), Map.of(
-                "accessToken", accessToken
-        ));
+        // 🔹 프론트엔드 URL로 리디렉트
+        response.sendRedirect("http://localhost:5173");
     }
-
     /**
      * 🔹 프로필 이미지 저장 및 업데이트
      */

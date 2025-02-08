@@ -44,6 +44,11 @@ public class FileService {
             if (multipartFile.getSize() > maxProfileSize) {
                 throw new IllegalArgumentException("프로필 사진은 최대 2MB 까지 업로드할 수 있습니다.");
             }
+        } else if (relatedType == RelatedType.CHALLENGE) {
+            long maxProfileSize = 2 * 1024 * 1024; // 2MB
+            if (multipartFile.getSize() > maxProfileSize) {
+                throw new IllegalArgumentException("썸네일 사진은 최대 2MB 까지 업로드할 수 있습니다.");
+            }
         } else {
             long maxFileSize = 500L * 1024 * 1024; // 500MB
             if (multipartFile.getSize() > maxFileSize) {
@@ -120,6 +125,21 @@ public class FileService {
         return fileRepository.findByRelatedIdAndRelatedType(relatedId, relatedType);
     }
 
+    public FileEntity updateFile(MultipartFile newFile, Long relatedId, RelatedType relatedType) throws Exception {
+        // 기존 파일 조회
+        Optional<FileEntity> existingFileOpt = fileRepository.findByRelatedIdAndRelatedType(relatedId, relatedType)
+                .stream().findFirst();
+
+        // 기존 파일이 있으면 삭제
+        if (existingFileOpt.isPresent()) {
+            FileEntity existingFile = existingFileOpt.get();
+            amazonS3Client.deleteObject(bucketName, existingFile.getFilePath());
+            fileRepository.delete(existingFile);
+        }
+
+        // 새 파일 저장
+        return saveFile(newFile, relatedId, relatedType);
+    }
     /**
      * S3에서 파일 삭제
      */
