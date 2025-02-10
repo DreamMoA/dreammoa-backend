@@ -80,15 +80,4 @@ public class ChallengeController {
         return ResponseEntity.ok(myChallenges);
     }
 
-    @GetMapping("/my-challenges/{challengeId}")
-    public ResponseEntity<MyChallengeDetailResponseDto> getMyChallengeDetail(@PathVariable Long challengeId) {
-        MyChallengeDetailResponseDto dto = challengeService.getMyChallengeDetail(challengeId);
-        return ResponseEntity.ok(dto);
-    }
-
-    @DeleteMapping("/my-challenges/{challengeId}/quit")
-    public ResponseEntity<String> quitChallenge(@PathVariable Long challengeId) {
-        challengeService.quitChallenge(challengeId);
-        return ResponseEntity.ok("챌린지에서 탈퇴하였습니다.");
-    }
 }
