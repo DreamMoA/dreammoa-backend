@@ -6,6 +6,7 @@ import com.garret.dreammoa.domain.model.UserEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 @Repository
 public interface ParticipantRepository extends JpaRepository<ParticipantEntity, Long> {
@@ -20,4 +21,7 @@ public interface ParticipantRepository extends JpaRepository<ParticipantEntity, 
     boolean existsByUserAndChallengeAndIsHost(UserEntity user, ChallengeEntity challenge, boolean isHost);
 
     long countByChallengeAndIsActiveTrue(ChallengeEntity challenge);
+
+    List<ParticipantEntity> findByUser(UserEntity user);
+
 }

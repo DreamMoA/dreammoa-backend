@@ -33,7 +33,7 @@ public class ChallengeLogEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user; // 챌린지에 참여한 사용자
 
-    @Column(name = "record_at", nullable = false)
+    @Column(name = "record_at", nullable = false)  // 🔹 주의!
     private LocalDate recordAt; // 챌린지 기록 날짜
 
     @Column(name = "pure_study_time", nullable = true)

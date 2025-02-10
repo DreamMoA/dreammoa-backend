@@ -10,17 +10,21 @@ import com.garret.dreammoa.domain.repository.UserTagRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class UserTagServiceImpl implements UserTagService{
+public class UserTagServiceImpl implements UserTagService {
     private final UserTagRepository userTagRepository;
     private final UserRepository userRepository;
     private final TagRepository tagRepository;
 
+    /**
+     * 전체 사용자 태그 조회
+     */
     @Override
     public List<UserTagResponseDto> getAllTags() {
         return userTagRepository.findAll().stream()
@@ -28,31 +32,38 @@ public class UserTagServiceImpl implements UserTagService{
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 태그 여러 개 추가 (배열 지원)
+     */
+    @Transactional
     @Override
-    public UserTagResponseDto addTag(UserTagRequestDto dto, Long userId) {
+    public List<UserTagResponseDto> addTags(List<String> tagNames, Long userId) {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("사용자 검색 실패"));
 
-        // 1. `TagEntity`(관리 태그)에서 이미 존재하는 태그인지 확인
-        if (tagRepository.findByTagName(dto.getTagName()).isPresent()) {
-            throw new IllegalStateException("이미 관리되고 있는 태그입니다.");
-        }
+        // 이미 존재하는 태그 필터링
+        List<String> existingTags = userTagRepository.findTagByUser(user).stream()
+                .map(UserTagEntity::getTagName)
+                .collect(Collectors.toList());
 
-        // 2. 유저가 이미 추가한 태그인가?(중복 방지)
-        if (userTagRepository.existsByUserAndTagName(user, dto.getTagName())) {
-            throw new IllegalStateException("이미 추가된 태그입니다.");
-        }
+        // 중복되지 않는 태그만 추가
+        List<UserTagEntity> newTags = tagNames.stream()
+                .distinct()
+                .filter(tagName -> !existingTags.contains(tagName)) // 중복 방지
+                .map(tagName -> UserTagEntity.builder()
+                        .tagName(tagName)
+                        .user(user)
+                        .build())
+                .collect(Collectors.toList());
 
-        UserTagEntity tag = UserTagEntity.builder()
-                .tagName(dto.getTagName())
-                .user(user)
-                .build();
+        userTagRepository.saveAll(newTags);
 
-        userTagRepository.save(tag);
-
-        return new UserTagResponseDto(tag);
+        return newTags.stream().map(UserTagResponseDto::new).collect(Collectors.toList());
     }
 
+    /**
+     * 특정 사용자의 태그 조회
+     */
     @Override
     public List<UserTagResponseDto> getUserTags(Long userId) {
         UserEntity user = userRepository.findById(userId)
@@ -63,15 +74,24 @@ public class UserTagServiceImpl implements UserTagService{
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 태그 여러 개 삭제 (배열 지원)
+     */
+    @Transactional
     @Override
-    public void deleteTag(Long tagId, Long userId) {
-        UserTagEntity tag = userTagRepository.findById(tagId)
-                .orElseThrow(() -> new EntityNotFoundException("태그 찾기 실패"));
+    public void deleteTagsByNames(List<String> tagNames, Long userId) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("사용자 검색 실패"));
 
-        if (!tag.getUser().getId().equals(userId)) {
-            throw new IllegalStateException("자신이 추가한 것만 삭제 가능");
+        // 해당 유저가 추가한 태그만 검색
+        List<UserTagEntity> userTags = userTagRepository.findTagByUser(user).stream()
+                .filter(tag -> tagNames.contains(tag.getTagName())) // 입력한 태그 이름이 포함되는지 확인
+                .collect(Collectors.toList());
+
+        if (userTags.isEmpty()) {
+            throw new IllegalStateException("삭제할 태그가 없습니다.");
         }
 
-        userTagRepository.delete(tag);
+        userTagRepository.deleteAll(userTags);
     }
 }
