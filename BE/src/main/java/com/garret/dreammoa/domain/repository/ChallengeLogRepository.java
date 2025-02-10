@@ -9,6 +9,8 @@ import java.util.List;
 
 @Repository
 public interface ChallengeLogRepository extends JpaRepository<ChallengeLogEntity, Long> {
-    // user 엔티티의 id와 기록 날짜 범위를 기준으로 조회
-    List<ChallengeLogEntity> findByUser_IdAndRecordDateBetween(Long userId, LocalDate startDate, LocalDate endDate);
+    List<ChallengeLogEntity> findByUser_IdAndRecordAtBetween(Long userId, LocalDate startDate, LocalDate endDate);
+    List<ChallengeLogEntity> findByUser_IdAndChallenge_ChallengeIdAndRecordAt(Long userId, Long challengeId, LocalDate recordAt);
+    List<ChallengeLogEntity> findByUser_IdAndChallenge_ChallengeIdAndRecordAtBetween(Long userId, Long challengeId, LocalDate startDate, LocalDate endDate);
+    boolean existsByUser_IdAndChallenge_ChallengeIdAndRecordAt(Long userId, Long challengeId, LocalDate recordAt);
 }
