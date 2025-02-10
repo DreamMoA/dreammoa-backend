@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 사용자 정보를 관리하는 JPA 엔티티
@@ -53,7 +55,18 @@ public class UserEntity {
         this.createdAt = (this.createdAt == null) ? LocalDateTime.now() : this.createdAt;
     }
 
+    @OneToMany(mappedBy = "user", orphanRemoval = true)
+    @Builder.Default
+    private List<ParticipantEntity> userParticipants = new ArrayList<>();
 
+    // 유저에 참가자 추가하는 메소드
+    public void addChallenge(ChallengeEntity challenge) {
+        ParticipantEntity participant = ParticipantEntity.builder()
+                .user(this)
+                .challenge(challenge)
+                .build();
+       this.userParticipants.add(participant);
+    }
 
     public enum Role {
         USER, ADMIN, Google, Naver, Kakao

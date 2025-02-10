@@ -1,5 +1,6 @@
 package com.garret.dreammoa.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
 public class ChallengeLogEntity {
 
     @Id
@@ -41,7 +43,8 @@ public class ChallengeLogEntity {
     private Integer screenTime; // 화면을 켠 시간
 
     @Column(name = "is_success", nullable = false)
-    private boolean isSuccess; // 성공/실패 여부
+    @JsonProperty("isSuccess")
+    private Boolean isSuccess;
 
     @PrePersist
     public void prePersist() {
