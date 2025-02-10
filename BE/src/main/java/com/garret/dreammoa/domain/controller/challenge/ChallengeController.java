@@ -1,9 +1,10 @@
 package com.garret.dreammoa.domain.controller.challenge;
 
-import com.garret.dreammoa.domain.dto.challenge.requestdto.ChallengeCreateRequest;
-import com.garret.dreammoa.domain.dto.challenge.requestdto.ChallengeUpdateRequest;
+import com.garret.dreammoa.domain.dto.challenge.requestdto.*;
 import com.garret.dreammoa.domain.dto.challenge.responsedto.ChallengeResponse;
 import com.garret.dreammoa.domain.service.challenge.ChallengeService;
+import io.openvidu.java.client.OpenViduHttpException;
+import io.openvidu.java.client.OpenViduJavaClientException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +25,7 @@ public class ChallengeController {
         return challengeService.createChallenge(requestData,thumbnail);
     }
 
-    @PutMapping("/update")
+    @PatchMapping("/update")
     public ResponseEntity<ChallengeResponse> updateChallenge(
             @RequestPart(value = "updateData") ChallengeUpdateRequest updateData,
             @RequestPart(value = "thumbnail",required = false) MultipartFile thumbnail) throws Exception {
@@ -40,9 +41,32 @@ public class ChallengeController {
     public ResponseEntity<ChallengeResponse> joinChallenge(@PathVariable Long challengeId){
         return challengeService.joinChallenge(challengeId);
     }
+    @DeleteMapping("{challengeId}/leave")
+    public ResponseEntity<ChallengeResponse> leaveChallenge(@PathVariable Long challengeId){
+        return challengeService.leaveChallenge(challengeId);
+    }
 
     @PostMapping("/{challengeId}/enter")
-    public ResponseEntity<ChallengeResponse> enterChallenge(@PathVariable Long challengeId){
-        return challengeService.enterChallenge(challengeId);
+    public ResponseEntity<ChallengeResponse> enterChallenge(@PathVariable Long challengeId, @RequestBody ChallengeLoadRequest loadDate) throws OpenViduJavaClientException, OpenViduHttpException {
+        return challengeService.enterChallenge(challengeId, loadDate);
+    }
+
+    @PostMapping("/{challengeId}/exit")
+    public ResponseEntity<ChallengeResponse> exitChallenge(@PathVariable Long challengeId, @RequestBody ChallengeExitRequest exitData) throws OpenViduJavaClientException, OpenViduHttpException {
+        return challengeService.exitChallenge(challengeId, exitData);
+    }
+
+    @PatchMapping("/{challengeId}/delegate")
+    public ResponseEntity<ChallengeResponse> delegateRoomManger(
+            @PathVariable Long challengeId,
+            @RequestParam Long newHostId){
+        return challengeService.delegateRoomManager(challengeId, newHostId);
+    }
+
+    @PostMapping("/{challengeId}/kick")
+    public ResponseEntity<ChallengeResponse> delegateRoomManger(
+            @PathVariable Long challengeId,
+            @RequestBody ChallengeKickRequest KickData){
+        return challengeService.kickParticipate(challengeId, KickData);
     }
 }

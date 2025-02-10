@@ -20,12 +20,12 @@ public class ParticipantEntity {
     private Long participantId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "challenge_id", nullable = false)
-    private ChallengeEntity challenge;
-
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "challenge_id", nullable = false)
+    private ChallengeEntity challenge;
 
     @Column(name = "is_host")
     private Boolean isHost;
@@ -36,9 +36,10 @@ public class ParticipantEntity {
     @Column(name = "is_active")
     private Boolean isActive;
 
-    @PrePersist
-    public void prePersist() {
-        this.joinedAt = (this.joinedAt == null) ? LocalDateTime.now() : this.joinedAt;
-    }
+    @Column(name = "session_token")
+    private String sessionToken;
 
+    public static ParticipantEntityBuilder builder() {
+        return new ParticipantEntityBuilder().joinedAt(LocalDateTime.now());
+    }
 }

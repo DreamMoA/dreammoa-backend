@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
 public class ChallengeLogEntity {
 
     @Id
@@ -32,19 +33,19 @@ public class ChallengeLogEntity {
     private UserEntity user; // 챌린지에 참여한 사용자
 
     @Column(name = "record_at", nullable = false)
-    private LocalDate recordDate; // 챌린지 기록 날짜
+    private LocalDate recordAt; // 챌린지 기록 날짜
 
     @Column(name = "pure_study_time", nullable = true)
-    private LocalDateTime pureStudyTime; // 순공 시간
+    private Integer pureStudyTime; // 순공 시간
 
     @Column(name = "screen_time", nullable = true)
-    private LocalDateTime screenTime; // 화면을 켠 시간
+    private Integer screenTime; // 화면을 켠 시간
 
     @Column(name = "is_success", nullable = false)
     private boolean isSuccess; // 성공/실패 여부
 
     @PrePersist
     public void prePersist() {
-        this.recordDate = (this.recordDate == null) ? LocalDate.now() : this.recordDate;
+        this.recordAt = (this.recordAt == null) ? LocalDate.now() : this.recordAt;
     }
 }

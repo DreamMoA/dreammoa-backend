@@ -43,7 +43,7 @@ public class DashboardService {
         LocalDate startDate = LocalDate.of(year, month, 1);
         LocalDate endDate = startDate.with(TemporalAdjusters.lastDayOfMonth());
 
-        List<ChallengeLogEntity> logs = challengeLogRepository.findByUser_IdAndRecordDateBetween(userId, startDate, endDate);
+        List<ChallengeLogEntity> logs = challengeLogRepository.findByUser_IdAndRecordAtBetween(userId, startDate, endDate);
 
         return logs.stream().map(log -> {
             Long challengeId = log.getChallenge().getChallengeId();
@@ -58,7 +58,7 @@ public class DashboardService {
                     .challengeLogId(log.getId())
                     .challengeId(challengeId)
                     .challengeTitle(challengeTitle)
-                    .recordDate(log.getRecordDate())
+                    .recordAt(log.getRecordAt())
                     .pureStudyTime(log.getPureStudyTime())
                     .screenTime(log.getScreenTime())
                     .isSuccess(log.isSuccess())

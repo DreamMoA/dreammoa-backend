@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class UseragServiceImpl implements UserTagService{
+public class UserTagServiceImpl implements UserTagService{
     private final UserTagRepository userTagRepository;
     private final UserRepository userRepository;
     private final TagRepository tagRepository;

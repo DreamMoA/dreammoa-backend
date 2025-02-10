@@ -20,16 +20,16 @@ public class ParticipantHistoryEntity {
     private Long historyId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "challenge_id", nullable = false)
-    private ChallengeEntity challenge;
-
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "action_by_user_id")
     private UserEntity actionByUser;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "challenge_id", nullable = false)
+    private ChallengeEntity challenge;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
@@ -47,6 +47,6 @@ public class ParticipantHistoryEntity {
     }
 
     public enum Status {
-        JOINED, LEFT, KICKED
+        JOINED, LEFT, KICKED, INVITED
     }
 }

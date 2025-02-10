@@ -1,5 +1,6 @@
 package com.garret.dreammoa.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.garret.dreammoa.domain.model.ChallengeEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -19,6 +20,7 @@ public class ChallengeTagEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "challenge_id", nullable = false)
+    @JsonBackReference
     private ChallengeEntity challenge;
 
     @ManyToOne(fetch = FetchType.LAZY)
