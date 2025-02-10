@@ -3,10 +3,8 @@ package com.garret.dreammoa.domain.controller.usertag;
 import com.garret.dreammoa.domain.dto.usertag.requestdto.UserTagRequestDto;
 import com.garret.dreammoa.domain.dto.usertag.responsedto.UserTagResponseDto;
 import com.garret.dreammoa.domain.service.usertag.UserTagService;
-import com.garret.dreammoa.utils.JwtUtil;
-import jakarta.servlet.http.HttpServletRequest;
+import com.garret.dreammoa.utils.SecurityUtil;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,78 +12,38 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
+@RequestMapping("/user-tag")  // 공통 URL 적용
 public class UserTagController {
     private final UserTagService tagService;
-    private final JwtUtil jwtUtil;
+    private final SecurityUtil securityUtil; // SecurityUtil 추가
+
     /**
      * 특정 사용자의 관심사 태그 조회
      */
-
-    @GetMapping("/user-tag")
-    public ResponseEntity<List<UserTagResponseDto>> getUserTags(HttpServletRequest request) {
-        String accessToken = getAccessTokenFromRequest(request);
-
-        if (accessToken == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        Long userId = jwtUtil.getUserIdFromToken(accessToken);
-        if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
+    @GetMapping
+    public ResponseEntity<List<UserTagResponseDto>> getUserTags() {
+        Long userId = securityUtil.getCurrentUser().getId(); // 현재 로그인한 사용자 가져오기
         List<UserTagResponseDto> userTags = tagService.getUserTags(userId);
         return ResponseEntity.ok(userTags);
     }
 
     /**
-     * 관심사 태그 추가 (현재 로그인한 사용자)
+     * 여러 개의 태그 추가 (DTO 사용)
      */
-    @PostMapping("/user-tag")
-    public ResponseEntity<UserTagResponseDto> addTag(HttpServletRequest request, @RequestBody UserTagRequestDto tagRequestDto) {
-        String accessToken = getAccessTokenFromRequest(request);
-        if (accessToken == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        Long userId = jwtUtil.getUserIdFromToken(accessToken);
-        if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        UserTagResponseDto createdTag = tagService.addTag(tagRequestDto, userId);
-        return ResponseEntity.ok(createdTag);
+    @PostMapping
+    public ResponseEntity<List<UserTagResponseDto>> addTags(@RequestBody UserTagRequestDto requestDto) {
+        Long userId = securityUtil.getCurrentUser().getId();
+        List<UserTagResponseDto> createdTags = tagService.addTags(requestDto.getTagNames(), userId);
+        return ResponseEntity.ok(createdTags);
     }
 
     /**
-     * 관심사 태그 삭제 (자신이 추가한 태그만 가능)
+     *  여러 개의 태그 삭제 (배열 지원)
      */
-    @DeleteMapping("/user-tag/{tagId}")
-    public ResponseEntity<String> deleteTag(@PathVariable Long tagId, HttpServletRequest request) {
-        String accessToken = getAccessTokenFromRequest(request);
-        if (accessToken == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        Long userId = jwtUtil.getUserIdFromToken(accessToken);
-        if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        tagService.deleteTag(tagId, userId);
-        return ResponseEntity.ok("삭제 완료되었습니다.");
+    @DeleteMapping
+    public ResponseEntity<String> deleteTags(@RequestBody UserTagRequestDto requestDto) {
+        Long userId = securityUtil.getCurrentUser().getId();
+        tagService.deleteTagsByNames(requestDto.getTagNames(), userId);
+        return ResponseEntity.ok("태그 삭제 완료");
     }
-
-    // 쿠키정보가져오기
-    private String getAccessTokenFromRequest(HttpServletRequest request) {
-        if (request.getCookies() == null) return null;
-
-        for (var cookie : request.getCookies()) {
-            if ("access_token".equals(cookie.getName())) {
-                return cookie.getValue();
-            }
-        }
-        return null;
-    }
-
 }

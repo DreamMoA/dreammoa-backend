@@ -48,7 +48,6 @@ public class OpenViduController{
      */
     @PostMapping("/sessions")
     public ResponseEntity<?> initializeSession(@RequestBody(required = false) Map<String, Object> params, HttpServletRequest httpRequest) {
-
         try {
             SessionProperties properties = SessionProperties.fromJson(params).build();
             Session session = openVidu.createSession(properties);
@@ -80,7 +79,6 @@ public class OpenViduController{
     @PostMapping("/sessions/{sessionId}/connections")
     public ResponseEntity<?> createConnection(@PathVariable("sessionId") String sessionId,
                                                    @RequestBody(required = false) Map<String, Object> params, HttpServletRequest httpRequest) throws OpenViduJavaClientException, OpenViduHttpException {
-
         System.out.println("createConnection 실행 완료 ");
         Session session = openVidu.getActiveSession(sessionId);
         if(session == null){
