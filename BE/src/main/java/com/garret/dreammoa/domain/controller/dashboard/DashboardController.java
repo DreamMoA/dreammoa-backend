@@ -71,7 +71,7 @@ public class DashboardController {
         return dashboardService.getTodayStatsForChallenge(accessToken, challengeId);
     }
 
-    // 선택한 첼린지에 대해 한달 조회
+    // 선택한 첼린지에 대해 한달 평균 조회
     @GetMapping("/challenge/{challengeId}/monthly-stats")
     public ChallengeMonthlyAverageStatsResponse getMonthlyAverageStatsForChallenge(
             @RequestHeader("Authorization") String accessToken,

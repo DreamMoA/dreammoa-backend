@@ -12,9 +12,9 @@ public class StudyHistoryDto {
     private Long challengeLogId;
     private Long challengeId;
     private String challengeTitle;
-    private LocalDate recordDate;
-    private LocalDateTime pureStudyTime;
-    private LocalDateTime screenTime;
+    private LocalDate recordAt;
+    private Integer pureStudyTime;
+    private Integer screenTime;
     private boolean isSuccess;
     private String thumbnailUrl;
 }

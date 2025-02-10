@@ -44,7 +44,7 @@ public class DashboardService {
         LocalDate startDate = LocalDate.of(year, month, 1);
         LocalDate endDate = startDate.with(TemporalAdjusters.lastDayOfMonth());
 
-        List<ChallengeLogEntity> logs = challengeLogRepository.findByUser_IdAndRecordDateBetween(userId, startDate, endDate);
+        List<ChallengeLogEntity> logs = challengeLogRepository.findByUser_IdAndRecordAtBetween(userId, startDate, endDate);
 
         return logs.stream().map(log -> {
             Long challengeId = log.getChallenge().getChallengeId();
@@ -59,7 +59,7 @@ public class DashboardService {
                     .challengeLogId(log.getId())
                     .challengeId(challengeId)
                     .challengeTitle(challengeTitle)
-                    .recordDate(log.getRecordDate())
+                    .recordAt(log.getRecordAt())
                     .pureStudyTime(log.getPureStudyTime())
                     .screenTime(log.getScreenTime())
                     .isSuccess(log.isSuccess())
@@ -102,7 +102,7 @@ public class DashboardService {
         LocalDate today = LocalDate.now();
 
         List<ChallengeLogEntity> todayLogs = challengeLogRepository
-                .findByUser_IdAndChallenge_ChallengeIdAndRecordDate(userId, challengeId, today);
+                .findByUser_IdAndChallenge_ChallengeIdAndRecordAt(userId, challengeId, today);
 
         long totalPureStudyTime = 0L;
         long totalScreenTime = 0L;
@@ -135,12 +135,12 @@ public class DashboardService {
         LocalDate endDate = startDate.with(TemporalAdjusters.lastDayOfMonth());
 
         List<ChallengeLogEntity> logs = challengeLogRepository
-                .findByUser_IdAndChallenge_ChallengeIdAndRecordDateBetween(userId, challengeId, startDate, endDate);
+                .findByUser_IdAndChallenge_ChallengeIdAndRecordAtBetween(userId, challengeId, startDate, endDate);
 
         long totalPureStudyTime = 0L;
         long totalScreenTime = 0L;
         String challengeTitle = null;
-        int daysInMonth = endDate.getDayOfMonth(); // 해당 월의 일수
+        int daysInMonth = endDate.getDayOfMonth();
 
         for (ChallengeLogEntity log : logs) {
             totalPureStudyTime += convertDurationToSeconds(log.getPureStudyTime());
@@ -161,7 +161,7 @@ public class DashboardService {
                 .build();
     }
 
-    // 선택한 첼린지 한달 총 공시간 총 순공시간
+    // 한달 총합 통계 조회
     public ChallengeMonthlyTotalStatsResponse getMonthlyTotalStatsForChallenge(String accessToken, Long challengeId, int year, int month) {
         if (!jwtUtil.validateToken(accessToken)) {
             throw new RuntimeException("유효하지 않은 Access Token입니다.");
@@ -171,7 +171,7 @@ public class DashboardService {
         LocalDate endDate = startDate.with(TemporalAdjusters.lastDayOfMonth());
 
         List<ChallengeLogEntity> logs = challengeLogRepository
-                .findByUser_IdAndChallenge_ChallengeIdAndRecordDateBetween(userId, challengeId, startDate, endDate);
+                .findByUser_IdAndChallenge_ChallengeIdAndRecordAtBetween(userId, challengeId, startDate, endDate);
 
         long totalPureStudyTime = 0L;
         long totalScreenTime = 0L;
@@ -193,7 +193,7 @@ public class DashboardService {
                 .build();
     }
 
-    // 가입 일 로 부터 순공 시간 총 공 시간
+    // 전체 통계 조회
     public OverallStatsResponse getOverallStats(String accessToken) {
         if (!jwtUtil.validateToken(accessToken)) {
             throw new RuntimeException("유효하지 않은 Access Token입니다.");
@@ -206,7 +206,7 @@ public class DashboardService {
         LocalDate today = LocalDate.now();
 
         List<ChallengeLogEntity> logs = challengeLogRepository
-                .findByUser_IdAndRecordDateBetween(userId, joinDate, today);
+                .findByUser_IdAndRecordAtBetween(userId, joinDate, today);
 
         long totalPureStudyTime = 0L;
         long totalScreenTime = 0L;
@@ -222,10 +222,9 @@ public class DashboardService {
     }
 
 
-    // 시간 차이 계산 하는 메서드 기준은 유닉스 타임
-    private long convertDurationToSeconds(LocalDateTime duration) {
-        if (duration == null) return 0L;
-        return java.time.Duration.between(LocalDateTime.of(1970, 1, 1, 0, 0), duration).getSeconds();
+    // Integer 반환
+    private int convertDurationToSeconds(Integer duration) {
+        return (duration == null) ? 0 : duration;
     }
 
 }
