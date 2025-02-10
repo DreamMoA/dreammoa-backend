@@ -8,5 +8,5 @@ import java.util.Optional;
 
 @Repository
 public interface ChallengeRepository extends JpaRepository<ChallengeEntity,Long> {
-    Optional<ChallengeEntity> findFirstByHost_Id(Long hostId);
+
 }

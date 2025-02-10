@@ -1,5 +1,4 @@
 package com.garret.dreammoa.config;
-import com.garret.dreammoa.config.FileProperties;
 import com.garret.dreammoa.config.oauth.OAuth2AuthorizationRequestBasedOnCookieRepository;
 import com.garret.dreammoa.config.oauth.OAuth2SuccessHandler;
 import com.garret.dreammoa.config.oauth.OAuth2UserCustomService;

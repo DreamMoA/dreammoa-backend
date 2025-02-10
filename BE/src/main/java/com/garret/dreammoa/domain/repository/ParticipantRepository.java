@@ -22,6 +22,5 @@ public interface ParticipantRepository extends JpaRepository<ParticipantEntity, 
 
     long countByChallengeAndIsActiveTrue(ChallengeEntity challenge);
 
-    List<ParticipantEntity> findByUser(UserEntity user);
-
+    List<ParticipantEntity> findByUser(UserEntity currentUser);
 }

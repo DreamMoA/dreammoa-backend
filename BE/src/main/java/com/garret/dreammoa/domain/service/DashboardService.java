@@ -62,7 +62,7 @@ public class DashboardService {
                     .recordAt(log.getRecordAt())
                     .pureStudyTime(log.getPureStudyTime())
                     .screenTime(log.getScreenTime())
-                    .isSuccess(log.isSuccess())
+                    .isSuccess(log.getIsSuccess())
                     .thumbnailUrl(thumbnailUrl) // 챌린지 썸네일 추가
                     .build();
         }).collect(Collectors.toList());

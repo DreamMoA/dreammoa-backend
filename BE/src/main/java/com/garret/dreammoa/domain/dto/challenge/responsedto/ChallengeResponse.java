@@ -121,7 +121,7 @@ public class ChallengeResponse {
                 .recordAt(challengeLogEntity.getRecordAt())
                 .pureStudyTime(challengeLogEntity.getPureStudyTime())
                 .screenTime(challengeLogEntity.getScreenTime())
-                .isSuccess(challengeLogEntity.isSuccess())
+                .isSuccess(challengeLogEntity.getIsSuccess())
                 .token(token)
                 .build();
     }

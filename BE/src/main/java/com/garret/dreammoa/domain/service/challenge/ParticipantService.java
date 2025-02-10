@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -102,7 +103,7 @@ public class ParticipantService {
         // 참여자 수가 체크 후 삭제
         long participantCount = participantRepository.countByChallenge(challenge);
         participantRepository.delete(participant);
-        if(participantCount == 0){
+        if(participantCount == 1){
             fileService.deleteThumbnail(challenge.getChallengeId());
         }
         // 참가자 수가 2명 이상이고 방장이 나갔다면
@@ -113,7 +114,6 @@ public class ParticipantService {
                 participantRepository.save(newHostParticipant);
             });
         }
-        participantHistoryService.createLeftHistory(user,challenge,"본인이 나가기 선택");
     }
     // 참가자의 활성 상태 비활성화
     @Transactional
@@ -169,4 +169,11 @@ public class ParticipantService {
     }
 
 
+    public boolean existsByChallengeAndUser(ChallengeEntity challenge, UserEntity user) {
+        return participantRepository.existsByChallengeAndUser(challenge, user);
+    }
+
+    public List<ParticipantEntity> findByUser(UserEntity currentUser) {
+        return participantRepository.findByUser(currentUser);
+    }
 }
