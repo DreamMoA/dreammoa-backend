@@ -165,7 +165,7 @@ public class ChallengeService {
         // ✅ 참가자에게 토큰 저장
         participantService.saveParticipantToken(user, challenge, token);
         // ✅ 기존 학습 로그 조회
-        Optional<ChallengeLogEntity> existingLog = challengeLogService.loadStudyLog(user, challenge, loadDate.getRecordDate());
+        Optional<ChallengeLogEntity> existingLog = challengeLogService.loadStudyLog(user, challenge, loadDate.getRecordAt());
         return existingLog.map(challengeLogEntity -> ResponseEntity.ok(ChallengeResponse.responseTokenWithLog("해당 날짜의 기록과 토큰", challengeLogEntity, token)))
                 .orElseGet(() -> ResponseEntity.ok(ChallengeResponse.responseToken("해당 날짜의 학습 기록이 없습니다.", token)));
     }

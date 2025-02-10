@@ -33,7 +33,7 @@ public class ChallengeLogService {
             ChallengeLogEntity log = existingLog.get();
             log.setPureStudyTime(exitData.getPureStudyTime()); // 순공 시간 업데이트
             log.setScreenTime(exitData.getScreenTime()); // 화면 켠 시간 업데이트
-            log.setSuccess(exitData.getIsSuccess()); // 성공 여부 업데이트
+            log.setIsSuccess(exitData.getIsSuccess()); // 성공 여부 업데이트
             challengeLogRepository.save(log);
         } else {
             // ✅ 기록이 없으면 새로 저장
