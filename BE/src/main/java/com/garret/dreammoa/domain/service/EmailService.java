@@ -35,93 +35,57 @@ public class EmailService {
         String title = "DreamMoa 이메일 인증 코드";
 
         // 이메일 내용 (HTML 형식)
-        String htmlContent = """
-                <!DOCTYPE html>
-                <html lang="ko">
-                <head>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <title>DreamMoa 이메일 인증 코드</title>
-                    <style>
-                        body {
-                            font-family: Arial, sans-serif;
-                            background-color: #f9f9f9;
-                            margin: 0;
-                            padding: 0;
-                        }
-                        .container {
-                            max-width: 600px;
-                            margin: 30px auto;
-                            background: #ffffff;
-                            border: 1px solid #e0e0e0;
-                            border-radius: 8px;
-                            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                            overflow: hidden;
-                        }
-                        .header {
-                            background-color: #4caf50;
-                            color: #ffffff;
-                            padding: 20px;
-                            text-align: center;
-                        }
-                        .content {
-                            padding: 20px;
-                            text-align: center;
-                        }
-                        .footer {
-                            background-color: #f1f1f1;
-                            color: #888888;
-                            text-align: center;
-                            padding: 10px;
-                            font-size: 12px;
-                        }
-                        .verification-code {
-                            font-size: 24px;
-                            font-weight: bold;
-                            color: #4caf50;
-                            margin: 20px 0;
-                        }
-                        .button {
-                            display: inline-block;
-                            padding: 10px 20px;
-                            margin: 20px 0;
-                            background-color: #4caf50;
-                            color: #ffffff;
-                            text-decoration: none;
-                            border-radius: 4px;
-                            font-weight: bold;
-                        }
-                        .button:hover {
-                            background-color: #45a049;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <div class="header">
-                            <h1>DreamMoa</h1>
-                            <p>소중한 꿈을 모아 DreamMoA</p>
-                        </div>
-                        <div class="content">
-                            <p>안녕하세요,</p>
-                            <p>DreamMoa를 이용해주셔서 감사합니다.</p>
-                            <p>아래 인증 코드를 입력하여 이메일 인증을 완료해주세요.</p>
-                            <div class="verification-code">""" + verificationCode +
-
-                """
-                       </div>
-                                    <p>이 인증 코드는 <strong>30분</strong> 동안만 유효합니다.</p>
-                                    <p>DreamMoa와 함께 소중한 꿈을 이루세요!</p>
-                                    <p><a href="https://file3.instiz.net/data/cached_img/upload/2020/01/19/4/764fe596bd92b8096180b4a0b4047360.jpg" class="button">인증 페이지로 이동</a></p>
-                                </div>
-                                <div class="footer">
-                                    <p>본 이메일은 발신 전용입니다. 문의가 필요하시면 <a href="mailto:eunspear0216@gmail.com">support@dreammoa.com</a>으로 연락주세요.</p>
-                                    <p>소중한 꿈을 모아 DreamMoA</p>
-                                </div>
-                            </div>
-                        </body>
-                        </html> """;
-
+    String htmlContent = """
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DreamMoa 이메일 인증 코드</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F9F9F9; font-family: Arial, sans-serif;">
+  <!-- 최상단에 추가 여백을 위한 outer table -->
+  <table width="100%" bgcolor="#F9F9F9" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+    <tr>
+      <td style="padding-top: 20px;"> <!-- 상단에 추가 padding -->
+        <table align="center" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 50px auto; border-collapse: collapse;">
+          <!-- Header -->
+          <tr>
+            <td style="background-color: #252F3D; color: #ffffff; text-align: center; padding: 20px;">
+              <img src="https://dream-moa.s3.ap-northeast-2.amazonaws.com/dreammoalogo.png" width="75" height="45" alt="DreamMoa Logo" border="0" style="font-family: sans-serif; font-size: 15px; line-height: 140%; color: #555555;">
+              <br>
+              <strong>소중한 꿈을 모아</strong>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="background-color: #ffffff; padding: 25px 35px; text-align: center;">
+              <p style="font-size: 14px; line-height: 1.4; color: #444444; margin-bottom: 15px;">안녕하세요,</p>
+              <p style="font-size: 14px; line-height: 1.4; color: #444444; margin-bottom: 15px;">DreamMoa를 이용해주셔서 감사합니다.</p>
+              <p style="font-size: 14px; line-height: 1.4; color: #444444; margin-bottom: 15px;">아래 인증 코드를 입력하여 이메일 인증을 완료해주세요.</p>
+              <div style="font-size: 36px; font-weight: bold; color: #000000; margin: 20px 0;">""" + verificationCode + """
+              </div>
+              <p style="font-size: 10px; color: #444444; margin-bottom: 15px;">(이 코드는 전송 후 30분 동안 유효합니다.)</p>
+              <p style="font-size: 14px; line-height: 1.4; color: #444444; margin-bottom: 15px;">DreamMoa와 함께 소중한 꿈을 이루세요!</p>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #F9F9F9; color: #777777; text-align: center; font-size: 12px; padding: 20px 30px;">
+              <p>본 이메일은 발신 전용입니다.</p>
+              <p>문의가 필요하시면
+                <a href="mailto:eunspear@gmail.com" style="color: #777777; text-decoration: underline;">support@dreammoa.com</a>으로 연락주세요.
+              </p>
+              <p>DreamMoa</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+""";
         // 이메일 전송
         mailService.sendEmail(email, title, htmlContent);
         log.info("인증 코드 이메일 전송: to={}, subject={}", email, title);
