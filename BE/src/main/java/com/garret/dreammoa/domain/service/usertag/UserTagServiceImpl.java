@@ -79,12 +79,13 @@ public class UserTagServiceImpl implements UserTagService {
      */
     @Transactional
     @Override
-    public void deleteTags(List<Long> tagIds, Long userId) {
-        List<UserTagEntity> tags = userTagRepository.findAllById(tagIds);
+    public void deleteTagsByNames(List<String> tagNames, Long userId) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("사용자 검색 실패"));
 
-        // 자신이 추가한 태그만 삭제 가능
-        List<UserTagEntity> userTags = tags.stream()
-                .filter(tag -> tag.getUser().getId().equals(userId))
+        // 해당 유저가 추가한 태그만 검색
+        List<UserTagEntity> userTags = userTagRepository.findTagByUser(user).stream()
+                .filter(tag -> tagNames.contains(tag.getTagName())) // 입력한 태그 이름이 포함되는지 확인
                 .collect(Collectors.toList());
 
         if (userTags.isEmpty()) {

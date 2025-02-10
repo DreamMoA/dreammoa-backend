@@ -41,9 +41,9 @@ public class UserTagController {
      *  여러 개의 태그 삭제 (배열 지원)
      */
     @DeleteMapping
-    public ResponseEntity<String> deleteTags(@RequestBody List<Long> tagIds) {
+    public ResponseEntity<String> deleteTags(@RequestBody UserTagRequestDto requestDto) {
         Long userId = securityUtil.getCurrentUser().getId();
-        tagService.deleteTags(tagIds, userId);
+        tagService.deleteTagsByNames(requestDto.getTagNames(), userId);
         return ResponseEntity.ok("태그 삭제 완료");
     }
 }

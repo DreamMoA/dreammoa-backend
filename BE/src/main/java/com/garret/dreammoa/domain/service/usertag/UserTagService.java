@@ -15,5 +15,5 @@ public interface UserTagService {
     List<UserTagResponseDto> getUserTags(Long userId);
 
     // ✅ 여러 개의 태그 삭제
-    void deleteTags(List<Long> tagIds, Long userId);
+    void deleteTagsByNames(List<String> tagNames, Long userId);
 }
