@@ -10,6 +10,5 @@ import java.time.LocalDate;
 @Setter
 public class ChallengeLoadRequest {
 
-    @JsonProperty("isSuccess")
     private LocalDate recordAt; // 챌린지 기록 날짜
 }

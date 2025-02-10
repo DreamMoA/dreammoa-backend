@@ -99,8 +99,9 @@ public class ChallengeService {
         // 태그 업데이트
         tagService.updateTags(challenge, request.getTags());
 //        challengeRepository.save(challenge); 필요 없음!
+        System.out.println("thumbnail = " + thumbnail);
 
-        if (thumbnail != null) {
+        if (thumbnail != null && !thumbnail.isEmpty()) {
             FileEntity file = fileService.updateFile(thumbnail, challengeId, FileEntity.RelatedType.CHALLENGE);
             String newThumbnail = file.getFileUrl();
             return ResponseEntity.ok(ChallengeResponse.fromEntity(newThumbnail,challenge,"챌린지가 성공적으로 수정되었습니다."));
@@ -184,7 +185,14 @@ public class ChallengeService {
         // ✅ 참가자에게 토큰 저장
         participantService.saveParticipantToken(user, challenge, token);
         // ✅ 기존 학습 로그 조회
+        System.out.println("🔍 recordAt 값: " + loadDate.getRecordAt());
         Optional<ChallengeLogEntity> existingLog = challengeLogService.loadStudyLog(user, challenge, loadDate.getRecordAt());
+
+        if (existingLog.isPresent()) {
+            System.out.println("✅ 학습 기록 존재: " + existingLog.get().getRecordAt());
+        } else {
+            System.out.println("❌ 학습 기록 없음!");
+        }
         return existingLog.map(challengeLogEntity -> ResponseEntity.ok(ChallengeResponse.responseTokenWithLog("해당 날짜의 기록과 토큰", challengeLogEntity, token)))
                 .orElseGet(() -> ResponseEntity.ok(ChallengeResponse.responseToken("해당 날짜의 학습 기록이 없습니다.", token)));
     }
