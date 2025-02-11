@@ -25,7 +25,6 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/boards")
 @RequiredArgsConstructor
-//@CrossOrigin(origins = "http://localhost:5173") // 프론트엔드 도메인
 public class BoardController {
 
     private final BoardService boardService;
