@@ -1,5 +1,6 @@
 package com.garret.dreammoa.domain.repository;
 
+import com.garret.dreammoa.domain.model.ChallengeEntity;
 import com.garret.dreammoa.domain.model.ReportEntity;
 import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,4 +12,5 @@ import java.util.List;
 
 @Repository
 public interface ReportRepository extends JpaRepository<ReportEntity, Long> {
+    boolean existsByReportedChallenge(ChallengeEntity challenge);
 }

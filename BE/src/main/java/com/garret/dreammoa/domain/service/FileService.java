@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 
 import org.springframework.http.HttpRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
@@ -36,6 +37,7 @@ public class FileService {
     /**
      * S3에 모든 파일을 저장하는 메서드
      */
+    @Transactional
     public FileEntity saveFile(MultipartFile multipartFile, Long relatedId, RelatedType relatedType) throws Exception {
 
         // 파일 크기 제한 조건
@@ -125,29 +127,38 @@ public class FileService {
         return fileRepository.findByRelatedIdAndRelatedType(relatedId, relatedType);
     }
 
+    @Transactional
     public FileEntity updateFile(MultipartFile newFile, Long relatedId, RelatedType relatedType) throws Exception {
         // 기존 파일 조회
         Optional<FileEntity> existingFileOpt = fileRepository.findByRelatedIdAndRelatedType(relatedId, relatedType)
                 .stream().findFirst();
-
         // 기존 파일이 있으면 삭제
         if (existingFileOpt.isPresent()) {
             FileEntity existingFile = existingFileOpt.get();
             amazonS3Client.deleteObject(bucketName, existingFile.getFilePath());
             fileRepository.delete(existingFile);
         }
-
+        // 즉시 DB에 반영하도록 flush() 호출
+        fileRepository.flush();
         // 새 파일 저장
         return saveFile(newFile, relatedId, relatedType);
     }
     /**
      * S3에서 파일 삭제
      */
+    @Transactional
     public void deleteFile(Long fileId) {
         FileEntity fileEntity = fileRepository.findById(fileId)
                 .orElseThrow(() -> new RuntimeException("File not found"));
         amazonS3Client.deleteObject(bucketName, fileEntity.getFilePath());
         fileRepository.delete(fileEntity);
+    }
+
+    @Transactional
+    public void deleteThumbnail(Long challengeId){
+        List<FileEntity> files = fileRepository.findByRelatedIdAndRelatedType(challengeId, RelatedType.CHALLENGE);
+        amazonS3Client.deleteObject(bucketName,  files.get(0).getFilePath());
+        fileRepository.delete(files.get(0));
     }
 
     public Optional<FileEntity> getProfilePicture(Long userId) {

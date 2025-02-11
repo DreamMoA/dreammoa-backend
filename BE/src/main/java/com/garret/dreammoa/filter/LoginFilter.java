@@ -16,6 +16,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 
@@ -66,8 +67,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
                 customUserDetails.getCreatedAt(),
                 customUserDetails.getLastLogin(),
                 role,
-                null, null
-
+                null, null, new ArrayList<>()
         );
 
         Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();

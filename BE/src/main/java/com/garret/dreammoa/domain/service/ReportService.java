@@ -6,6 +6,7 @@ import com.garret.dreammoa.domain.dto.report.response.ReportListResponseDto;
 import com.garret.dreammoa.domain.dto.report.response.ReportResponseDto;
 import com.garret.dreammoa.domain.model.*;
 import com.garret.dreammoa.domain.repository.*;
+import com.garret.dreammoa.domain.service.challenge.ParticipantService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -25,7 +26,7 @@ public class ReportService {
     private final CommentRepository commentRepository;
     private final ChallengeRepository challengeRepository;
     private final UserRepository userRepository;
-
+    private final ParticipantService participantService;
     @Transactional
     public ReportResponseDto createReport(ReportRequestDto reportRequestDto) {
         log.info("📌 [신고 요청] 신고 타입: {}, 대상 ID: {}, 신고 사유: {}",
@@ -109,16 +110,23 @@ public class ReportService {
                             return new RuntimeException("신고할 챌린지를 찾을 수 없습니다.");
                         });
 
+                // 참가자 테이블에서 방장 찾기
+                ParticipantEntity hostParticipant = participantService.getCurrentHost(reporter, challenge)
+                        .orElseThrow(() -> {
+                            log.error("❌ [신고 오류] 챌린지에 방장이 없습니다. (챌린지 ID: {})", challenge.getChallengeId());
+                            return new RuntimeException("이 챌린지에는 방장이 없습니다.");
+                        });
+
                 // 자기 챌린지 신고 불가
-                if (challenge.getHost().getId().equals(reporter.getId())) {
+                if (hostParticipant.getUser().getId().equals(reporter.getId())) {
                     log.warn("🚫 [신고 제한] 사용자가 자신의 챌린지 (ID: {})을 신고하려고 했습니다.", challenge.getChallengeId());
                     throw new RuntimeException("자신이 생성한 챌린지는 신고할 수 없습니다.");
                 }
 
-                log.info("📝 [챌린지 신고] 신고 대상: {} (챌린지 ID: {})", challenge.getHost().getEmail(), challenge.getChallengeId());
+                log.info("📝 [챌린지 신고] 신고 대상: {} (챌린지 ID: {})", hostParticipant.getUser().getEmail(), challenge.getChallengeId());
 
                 reportEntity.setReportedChallenge(challenge);
-                reportEntity.setReportedUser(challenge.getHost());
+                reportEntity.setReportedUser(hostParticipant.getUser());
                 break;
 
             case USER:
