@@ -1,5 +1,6 @@
 package com.garret.dreammoa.domain.service.board;
 
+import com.garret.dreammoa.domain.document.BoardDocument;
 import com.garret.dreammoa.domain.dto.board.requestdto.BoardRequestDto;
 import com.garret.dreammoa.domain.dto.board.responsedto.BoardResponseDto;
 import com.garret.dreammoa.domain.dto.user.CustomUserDetails;
@@ -7,9 +8,11 @@ import com.garret.dreammoa.domain.model.BoardEntity;
 import com.garret.dreammoa.domain.model.FileEntity;
 import com.garret.dreammoa.domain.model.UserEntity;
 import com.garret.dreammoa.domain.repository.BoardRepository;
+import com.garret.dreammoa.domain.repository.BoardSearchRepository;
 import com.garret.dreammoa.domain.repository.CommentRepository;
 import com.garret.dreammoa.domain.repository.UserRepository;
 import com.garret.dreammoa.domain.service.FileService;
+import com.garret.dreammoa.domain.service.embedding.EmbeddingService;
 import com.garret.dreammoa.domain.service.like.LikeService;
 import com.garret.dreammoa.domain.service.viewcount.ViewCountService;
 import jakarta.annotation.PostConstruct;
@@ -25,17 +28,17 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.springframework.web.client.RestTemplate;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -55,6 +58,8 @@ public class BoardServiceImpl implements BoardService {
     private final @Qualifier("boardDtoRedisTemplate") RedisTemplate<String, BoardResponseDto> boardDtoRedisTemplate;
     // 문자열 전용 RedisTemplate (댓글 수와 같은 단순 값을 위한 캐싱)
     private final RedisTemplate<String, String> redisTemplate;
+    private final BoardSearchRepository boardSearchRepository;
+    private final EmbeddingService embeddingService;
 
     @PostConstruct
     public void initializeBoardCount() {
@@ -107,6 +112,9 @@ public class BoardServiceImpl implements BoardService {
         // 치환된 최종 HTML을 다시 board 객체에 반영한 후 UPDATE
         savedBoard.setContent(finalContent);
         BoardEntity updatedBoard = boardRepository.saveAndFlush(savedBoard);
+
+        // Elasticsearch에 동기화
+        syncToElasticsearch(updatedBoard);
 
         // 트랜잭션 커밋 후 Redis 업데이트
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -184,6 +192,9 @@ public class BoardServiceImpl implements BoardService {
         }
 
         BoardEntity updated = boardRepository.save(board);
+
+        // Elasticsearch에 동기화
+        syncToElasticsearch(updated);
 
         // 캐시 삭제
         String cacheKey = "board:" + postId;
@@ -280,6 +291,9 @@ public class BoardServiceImpl implements BoardService {
         if (!board.getUser().getId().equals(currentUserId)) {
             throw new RuntimeException("본인이 작성한 글만 삭제할 수 있습니다.");
         }
+
+        // Elasticsearch에서 해당 게시글 삭제
+        boardSearchRepository.deleteByDocumentId(postId);
 
         boardRepository.delete(board);
 
@@ -455,6 +469,50 @@ public class BoardServiceImpl implements BoardService {
         }
     }
 
+    /**
+     * Elasticsearch 동기화 (MySQL -> Elasticsearch)
+     */
+    private void syncToElasticsearch(BoardEntity board) {
+        try {
+            // 게시글 제목과 내용을 결합하여 임베딩 계산
+            String textForEmbedding = board.getTitle() + " " + board.getContent();
+            float[] embedding = embeddingService.getEmbedding(textForEmbedding);
+
+            // 임베딩 계산이 실패했거나 빈 배열이면 기본 384차원 0.0 배열 사용 (Java에서는 new float[384]가 0.0으로 초기화됨)
+            if (embedding == null || embedding.length == 0) {
+                embedding = new float[384];
+            }
+
+            // float[]를 List<Double>로 변환 (JSON 직렬화를 위해)
+            List<Double> embeddingList = new ArrayList<>();
+            for (float value : embedding) {
+                embeddingList.add((double) value);
+            }
+
+            // BoardDocument 객체에 임베딩 필드 추가
+            BoardDocument boardDocument = BoardDocument.builder()
+                    .id(board.getPostId())
+                    .userId(board.getUser().getId())
+                    .userNickname(board.getUser().getNickname())
+                    .category(board.getCategory().name())
+                    .title(board.getTitle())
+                    .content(board.getContent())
+                    .createdAt(board.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli())
+                    .updatedAt(board.getUpdatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli())
+                    .viewCount(board.getViewCount().intValue())
+                    .embedding(embeddingList)  // ← 임베딩 값 추가 (기본값도 포함됨)
+                    .build();
+
+            boardSearchRepository.index(boardDocument);
+            log.info("✅ Elasticsearch 동기화 완료 - 게시글 ID: {}", board.getPostId());
+        } catch (Exception e) {
+            log.error("❌ Elasticsearch 동기화 중 오류 발생: ", e);
+        }
+    }
+
+
+
+
     private Long getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -485,4 +543,6 @@ public class BoardServiceImpl implements BoardService {
                 .commentCount(commentCount)
                 .build();
     }
+
+
 }

@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Repository;
 
@@ -57,6 +58,11 @@ public interface BoardRepository extends JpaRepository<BoardEntity, Long> {
     @Query("UPDATE BoardEntity b SET b.commentCount = b.commentCount - 1 WHERE b.postId = :postId")
     void decrementCommentCount(Long postId);
 
+    // ✅ 추가: Redis에서 DB로 댓글 개수 동기화할 때 사용하는 메서드
+    @Modifying
+    @Transactional
+    @Query("UPDATE BoardEntity b SET b.commentCount = :commentCount WHERE b.postId = :postId")
+    void updateCommentCount(@Param("postId") Long postId, @Param("commentCount") int commentCount);
     List<BoardEntity> findTop20ByOrderByViewCountDesc();
 
     // DB의 viewCount 컬럼을 기준으로 내림차순 정렬 및 페이징
