@@ -1,5 +1,6 @@
 package com.garret.dreammoa.domain.service.usertag;
 
+import java.util.*;
 import com.garret.dreammoa.domain.dto.usertag.requestdto.UserTagRequestDto;
 import com.garret.dreammoa.domain.dto.usertag.responsedto.UserTagResponseDto;
 import com.garret.dreammoa.domain.model.UserEntity;
@@ -44,8 +45,11 @@ public class UserTagServiceImpl implements UserTagService {
         // 기존 태그 전부 삭제
         userTagRepository.deleteByUser(user);
 
+        // 안의 데이터의 중복제거
+        List<String> uniqueTagNames = new ArrayList<>(new HashSet<>(tagNames));
+
         // 새로운 태그 추가
-        List<UserTagEntity> newTags = tagNames.stream()
+        List<UserTagEntity> newTags = uniqueTagNames.stream()
                 .distinct()
                 .map(tagName -> UserTagEntity.builder()
                         .tagName(tagName)
