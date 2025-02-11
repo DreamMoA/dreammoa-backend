@@ -27,5 +27,6 @@ public class BoardResponseDto {
     private int viewCount;
     private int likeCount;
     private int commentCount;
+    private List<String> tags;
 
 }

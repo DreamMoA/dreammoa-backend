@@ -58,12 +58,20 @@ public interface BoardRepository extends JpaRepository<BoardEntity, Long> {
     @Query("UPDATE BoardEntity b SET b.commentCount = b.commentCount - 1 WHERE b.postId = :postId")
     void decrementCommentCount(Long postId);
 
-    // ✅ 추가: Redis에서 DB로 댓글 개수 동기화할 때 사용하는 메서드
+    // Redis에서 DB로 댓글 개수 동기화할 때 사용하는 메서드
     @Modifying
     @Transactional
     @Query("UPDATE BoardEntity b SET b.commentCount = :commentCount WHERE b.postId = :postId")
     void updateCommentCount(@Param("postId") Long postId, @Param("commentCount") int commentCount);
     List<BoardEntity> findTop20ByOrderByViewCountDesc();
+
+    // ID 리스트를 기반으로 페이징된 게시글 목록 조회
+    @Query("SELECT b FROM BoardEntity b WHERE b.postId IN :postIds")
+    Page<BoardEntity> findByPostIdIn(@Param("postIds") List<Long> postIds, Pageable pageable);
+
+    @Query("SELECT DISTINCT b FROM BoardEntity b LEFT JOIN FETCH b.boardTags bt LEFT JOIN FETCH bt.tag WHERE b.category = :category ORDER BY b.createdAt DESC")
+    Page<BoardEntity> findAllByCategoryWithTags(@Param("category") BoardEntity.Category category, Pageable pageable);
+
 
     // DB의 viewCount 컬럼을 기준으로 내림차순 정렬 및 페이징
 //    Page<BoardEntity> findAllByOrderByViewCountDesc(BoardEntity.Category category, Pageable pageable);

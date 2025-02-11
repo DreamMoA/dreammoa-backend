@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "tb_board")
@@ -56,6 +58,9 @@ public class BoardEntity {
     @Column(columnDefinition = "INT DEFAULT 0")
     private int commentCount = 0;
 
+    // ✅ 태그 목록 (BoardTagEntity와 연결)
+    @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<BoardTagEntity> boardTags = new ArrayList<>();
 
     @PrePersist
     public void prePersist() {
