@@ -2,13 +2,15 @@ package com.garret.dreammoa.domain.controller.challenge;
 
 import com.garret.dreammoa.domain.dto.challenge.requestdto.*;
 import com.garret.dreammoa.domain.dto.challenge.responsedto.ChallengeResponse;
-import com.garret.dreammoa.domain.dto.challenge.responsedto.MyChallengeDetailResponseDto;
 import com.garret.dreammoa.domain.dto.challenge.responsedto.MyChallengeResponseDto;
+import com.garret.dreammoa.domain.dto.challenge.responsedto.PagedChallengeResponseDto;
+import com.garret.dreammoa.domain.dto.challenge.responsedto.SearchChallengeResponseDto;
 import com.garret.dreammoa.domain.service.challenge.ChallengeService;
 import io.openvidu.java.client.OpenViduHttpException;
 import io.openvidu.java.client.OpenViduJavaClientException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -78,6 +80,28 @@ public class ChallengeController {
     public ResponseEntity<List<MyChallengeResponseDto>> getMyChallenges() {
         List<MyChallengeResponseDto> myChallenges = challengeService.getMyChallenges();
         return ResponseEntity.ok(myChallenges);
+    }
+
+    @GetMapping("/popular")
+    public ResponseEntity<List<MyChallengeResponseDto>> getPopularChallenges(
+            @RequestParam(required = false) List<String> tags){
+        List<MyChallengeResponseDto> popularChallenges  = challengeService.getPopularChallenges(tags);
+        return ResponseEntity.ok(popularChallenges);
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<SearchChallengeResponseDto> searchChallenges(
+            @RequestParam(required = false) List<String> tags,
+            @RequestParam(required = false) String keyword) {
+        return challengeService.searchChallenges(tags, keyword);
+    }
+
+    @GetMapping("/all-challenges")
+    public ResponseEntity<PagedChallengeResponseDto<MyChallengeResponseDto>> getPopularChallenges(
+            @RequestParam(required = false) List<String> tags,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page) {
+        return challengeService.getAllChallenges(tags, keyword, page);
     }
 
 }

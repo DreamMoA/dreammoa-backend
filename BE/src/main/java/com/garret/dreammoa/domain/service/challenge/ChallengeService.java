@@ -3,6 +3,8 @@ package com.garret.dreammoa.domain.service.challenge;
 import com.garret.dreammoa.domain.dto.challenge.requestdto.*;
 import com.garret.dreammoa.domain.dto.challenge.responsedto.ChallengeResponse;
 import com.garret.dreammoa.domain.dto.challenge.responsedto.MyChallengeResponseDto;
+import com.garret.dreammoa.domain.dto.challenge.responsedto.PagedChallengeResponseDto;
+import com.garret.dreammoa.domain.dto.challenge.responsedto.SearchChallengeResponseDto;
 import com.garret.dreammoa.domain.model.*;
 import com.garret.dreammoa.domain.repository.*;
 import com.garret.dreammoa.domain.service.FileService;
@@ -12,11 +14,17 @@ import io.openvidu.java.client.OpenViduHttpException;
 import io.openvidu.java.client.OpenViduJavaClientException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -77,9 +85,10 @@ public class ChallengeService {
             return ResponseEntity.ok(ChallengeResponse.fromEntity(thumbnailURL, challenge, "챌린지가 성공적으로 생성되었습니다."));
         } else {
             log.info("썸네일이 없으므로 기본 이미지 사용");
-            return  ResponseEntity.ok(ChallengeResponse.fromEntity(challenge, "챌린지가 성공적으로 생성되었습니다."));
+            return ResponseEntity.ok(ChallengeResponse.fromEntity(challenge, "챌린지가 성공적으로 생성되었습니다."));
         }
     }
+
     @Transactional
     public ResponseEntity<ChallengeResponse> updateChallenge(ChallengeUpdateRequest request, MultipartFile thumbnail) throws Exception {
         UserEntity user = securityUtil.getCurrentUser();
@@ -88,7 +97,7 @@ public class ChallengeService {
                 .orElseThrow(() -> new IllegalArgumentException("해당 챌린지를 찾을 수 없습니다."));
 
         // 방장 여부 확인
-        if(!participantService.isHost(user,challenge)){
+        if (!participantService.isHost(user, challenge)) {
             throw new IllegalArgumentException("챌린지를 수정할 권한이 없습니다.");
         }
         // 챌린지 정보 업데이트
@@ -104,13 +113,14 @@ public class ChallengeService {
         if (thumbnail != null && !thumbnail.isEmpty()) {
             FileEntity file = fileService.updateFile(thumbnail, challengeId, FileEntity.RelatedType.CHALLENGE);
             String newThumbnail = file.getFileUrl();
-            return ResponseEntity.ok(ChallengeResponse.fromEntity(newThumbnail,challenge,"챌린지가 성공적으로 수정되었습니다."));
+            return ResponseEntity.ok(ChallengeResponse.fromEntity(newThumbnail, challenge, "챌린지가 성공적으로 수정되었습니다."));
         }
-        return ResponseEntity.ok(ChallengeResponse.fromEntity(challenge,"챌린지가 성공적으로 수정되었습니다."));
+        return ResponseEntity.ok(ChallengeResponse.fromEntity(challenge, "챌린지가 성공적으로 수정되었습니다."));
     }
 
     /**
      * 현재 로그인한 사용자가 참여 중인 특정 챌린지의 상세 정보를 DTO로 반환
+     *
      * @param challengeId 조회할 챌린지 id
      * @return MyChallengeDetailResponseDto
      * @throws IllegalArgumentException 사용자가 해당 챌린지에 참여 중이 아닐 경우
@@ -156,7 +166,7 @@ public class ChallengeService {
 
         // 참가자 정보 조회 및 상태 업데이트
         participantService.leaveParticipant(user, challenge);
-        participantHistoryService.createLeftHistory(user,challenge,"본인이 나가기 선택");
+        participantHistoryService.createLeftHistory(user, challenge, "본인이 나가기 선택");
 
         return ResponseEntity.ok(ChallengeResponse.responseMessage("챌린지에서 정상적으로 탈퇴했습니다."));
     }
@@ -269,21 +279,6 @@ public class ChallengeService {
         return ResponseEntity.ok(ChallengeResponse.responseMessage("사용자가 챌린지에서 강퇴되었습니다."));
     }
 
-
-    // status 처리
-//    String status;
-//    LocalDate today = LocalDate.now();
-//    LocalDate startDate = request.getStartDate().toLocalDate();
-//    LocalDate expireDate = request.getExpireDate().toLocalDate();
-//
-//        if (startDate.isAfter(today)) {
-//        status = "대기중";  // 시작일이 미래일 경우
-//    } else if (startDate.isEqual(today) && expireDate.isAfter(today)) {
-//        status = "진행중";  // 오늘이 시작일이고 종료일이 미래일 경우
-//    } else {
-//        status = "종료";  // 종료일이 과거일 경우
-//    }
-
     @Transactional
     public List<MyChallengeResponseDto> getMyChallenges() {
 
@@ -314,5 +309,105 @@ public class ChallengeService {
                 })
                 .collect(Collectors.toList());
     }
+
+    public ResponseEntity<SearchChallengeResponseDto> searchChallenges(List<String> tags, String keyword) {
+
+        LocalDateTime now = LocalDateTime.now();
+
+        // ✅ tags와 keyword가 null일 수 있으니 기본값 처리
+        List<String> safeTags = tags != null ? tags : Collections.emptyList();
+        String safeKeyword = keyword != null ? keyword : "";
+
+        // ⏳ 진행 중 (startDate ~ expireDate 사이 + 참가 가능)
+        Page<MyChallengeResponseDto> runningChallenges = challengeRepository
+                .findRunningChallenges(tags, keyword, now, PageRequest.of(0, 8))
+                .map(this::toResponseDto);
+
+        // 📢 모집 중 (startDate 이전 + 참가 가능)
+        Page<MyChallengeResponseDto> recruitingChallenges = challengeRepository
+                .findRecruitingChallenges(tags, keyword, now, PageRequest.of(0, 8))
+                .map(this::toResponseDto);
+
+        // 🌟 인기 챌린지 (참가자 많은 순)
+        Page<MyChallengeResponseDto> popularChallenges = challengeRepository
+                .findPopularChallenges(tags, keyword, PageRequest.of(0, 8))
+                .map(this::toResponseDto);
+
+        return ResponseEntity.ok(SearchChallengeResponseDto.builder()
+                .recruitingChallenges(recruitingChallenges.getContent())
+                .runningChallenges(runningChallenges.getContent())
+                .popularChallenges(popularChallenges.getContent())
+                .build());
+    }
+
+    public ResponseEntity<PagedChallengeResponseDto<MyChallengeResponseDto>> getAllChallenges(List<String> tags, String keyword, int page) {
+
+        Pageable pageable = PageRequest.of(page, 8);
+        // 필터링 + 정렬된 데이터 가져오기
+        Page<ChallengeEntity> challengePage = challengeRepository.findPopularChallenges(tags, keyword, pageable);
+
+        List<MyChallengeResponseDto> challengeList = challengePage.stream()
+                .map(this::toResponseDto)
+                .collect(Collectors.toList());
+
+        PagedChallengeResponseDto<MyChallengeResponseDto> pagedResponse = toPagedResponse(challengePage, challengeList);
+        return ResponseEntity.ok(pagedResponse);
+    }
+
+    public List<MyChallengeResponseDto> getPopularChallenges(List<String> tags) {
+
+        List<ChallengeEntity> popularChallenges = challengeRepository.findPopularChallengesByTags(tags, PageRequest.of(0, 8));
+        return popularChallenges.stream()
+                .map(challenge -> {
+                    List<String> tagNames = challenge.getChallengeTags().stream()
+                            .map(challengeTag -> challengeTag.getTag().getTagName())
+                            .collect(Collectors.toList());
+                    List<FileEntity> files = fileService.getFiles(challenge.getChallengeId(), FileEntity.RelatedType.CHALLENGE);
+                    String thumbnailUrl = files.isEmpty() ? null : files.get(0).getFileUrl();
+                    return MyChallengeResponseDto.builder()
+                            .challengeId(challenge.getChallengeId())
+                            .title(challenge.getTitle())
+                            .description(challenge.getDescription())
+                            .startDate(challenge.getStartDate())
+                            .expireDate(challenge.getExpireDate())
+                            .isActive(challenge.getIsActive())
+                            .tags(tagNames)
+                            .thumbnail(thumbnailUrl)
+                            .build();
+                }).collect(Collectors.toList());
+    }
+
+    private MyChallengeResponseDto toResponseDto(ChallengeEntity challenge) {
+        List<String> tagNames = Optional.ofNullable(challenge.getChallengeTags())
+                .orElse(Collections.emptyList()) // ✅ 태그 리스트가 없으면 빈 리스트 반환
+                .stream()
+                .map(challengeTag -> challengeTag.getTag().getTagName())
+                .collect(Collectors.toList());
+
+        List<FileEntity> files = fileService.getFiles(challenge.getChallengeId(), FileEntity.RelatedType.CHALLENGE);
+        String thumbnailUrl = files.isEmpty() ? null : files.get(0).getFileUrl();
+
+        return MyChallengeResponseDto.builder()
+                .challengeId(challenge.getChallengeId())
+                .title(challenge.getTitle())
+                .description(challenge.getDescription())
+                .startDate(challenge.getStartDate())
+                .expireDate(challenge.getExpireDate())
+                .isActive(challenge.getIsActive())
+                .tags(tagNames)
+                .thumbnail(thumbnailUrl)
+                .build();
+    }
+    // ✅ Page 객체를 JSON으로 변환해주는 메서드
+    private PagedChallengeResponseDto<MyChallengeResponseDto> toPagedResponse(Page<ChallengeEntity> page, List<MyChallengeResponseDto> list) {
+        return PagedChallengeResponseDto.<MyChallengeResponseDto>builder()
+                .content(list)
+                .currentPage(page.getNumber()) // 현재 페이지 번호
+                .totalPages(page.getTotalPages()) // 전체 페이지 수
+                .totalElements(page.getTotalElements()) // 전체 데이터 개수
+                .isLastPage(page.isLast())
+                .build();
+    }
+
 }
 
