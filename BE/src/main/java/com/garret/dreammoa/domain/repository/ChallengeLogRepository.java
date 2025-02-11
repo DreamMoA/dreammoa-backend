@@ -4,6 +4,7 @@ import com.garret.dreammoa.domain.model.ChallengeEntity;
 import com.garret.dreammoa.domain.model.ChallengeLogEntity;
 import com.garret.dreammoa.domain.model.UserEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -18,4 +19,6 @@ public interface ChallengeLogRepository extends JpaRepository<ChallengeLogEntity
     List<ChallengeLogEntity> findByUser_IdAndChallenge_ChallengeIdAndRecordAt(Long userId, Long challengeId, LocalDate recordAt);
     List<ChallengeLogEntity> findByUser_IdAndChallenge_ChallengeIdAndRecordAtBetween(Long userId, Long challengeId, LocalDate startDate, LocalDate endDate);
     boolean existsByUser_IdAndChallenge_ChallengeIdAndRecordAt(Long userId, Long challengeId, LocalDate recordAt);
+    @Query(value = "SELECT COALESCE(SUM(screen_time), 0) FROM tb_challenge_log", nativeQuery = true)
+    Integer findTotalScreenTime();
 }
