@@ -73,3 +73,14 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("예기치 않은 오류가 발생했습니다: " + ex.getMessage()));
     }
 }
+
+
+/*
+
+stat
+
+message
+
+data
+4820
+ */

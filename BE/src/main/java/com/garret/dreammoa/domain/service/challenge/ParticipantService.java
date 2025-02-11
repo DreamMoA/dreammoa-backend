@@ -115,6 +115,7 @@ public class ParticipantService {
             });
         }
     }
+
     // 참가자의 활성 상태 비활성화
     @Transactional
     public void deactivateParticipant(UserEntity user, ChallengeEntity challenge) {

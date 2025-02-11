@@ -57,6 +57,8 @@ public interface BoardRepository extends JpaRepository<BoardEntity, Long> {
     @Query("UPDATE BoardEntity b SET b.commentCount = b.commentCount - 1 WHERE b.postId = :postId")
     void decrementCommentCount(Long postId);
 
+    List<BoardEntity> findTop20ByOrderByViewCountDesc();
+
     // DB의 viewCount 컬럼을 기준으로 내림차순 정렬 및 페이징
 //    Page<BoardEntity> findAllByOrderByViewCountDesc(BoardEntity.Category category, Pageable pageable);
 
