@@ -12,6 +12,7 @@ import com.garret.dreammoa.domain.service.board.BoardService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -183,6 +185,43 @@ public class CommentServiceImpl implements CommentService{
         redisTemplate.opsForValue().decrement(key);
 
         boardRepository.decrementCommentCount(postId);
+    }
+
+    // 1분마다 Redis ↔ DB 동기화
+    @Scheduled(fixedRate = 300000) // 5분마다 실행
+    public void syncCommentCountToDB() {
+        Set<String> keys = redisTemplate.keys("commentCount:*");
+
+        if (keys == null || keys.isEmpty()) return;
+
+        for (String key : keys) {
+            Long postId = Long.parseLong(key.replace("commentCount:", ""));
+            String redisValue = redisTemplate.opsForValue().get(key);
+
+            if (redisValue != null) {
+                int redisCommentCount = Integer.parseInt(redisValue);
+                boardRepository.updateCommentCount(postId, redisCommentCount);
+            }
+        }
+    }
+
+    // 댓글 개수 조회
+    @Override
+    public int getCommentCount(Long postId) {
+        // Redis 키 생성
+        String key = "commentCount:" + postId;
+
+        // Redis에서 댓글 개수 조회
+        String value = redisTemplate.opsForValue().get(key);
+
+        if (value == null) {
+            // Redis에 없으면 DB에서 조회 후 저장
+            int dbCommentCount = commentRepository.countByBoard_PostId(postId);
+            redisTemplate.opsForValue().set(key, String.valueOf(dbCommentCount)); // Redis에 캐싱
+            return dbCommentCount;
+        }
+
+        return Integer.parseInt(value);
     }
 
     // 특정 게시글의 모든 댓글 조회 (추가적인 필터링 및 정렬 가능)

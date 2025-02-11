@@ -1,5 +1,6 @@
 package com.garret.dreammoa.domain.service.usertag;
 
+import java.util.*;
 import com.garret.dreammoa.domain.dto.usertag.requestdto.UserTagRequestDto;
 import com.garret.dreammoa.domain.dto.usertag.responsedto.UserTagResponseDto;
 import com.garret.dreammoa.domain.model.UserEntity;
@@ -37,19 +38,19 @@ public class UserTagServiceImpl implements UserTagService {
      */
     @Transactional
     @Override
-    public List<UserTagResponseDto> addTags(List<String> tagNames, Long userId) {
+    public List<UserTagResponseDto> resetTags(List<String> tagNames, Long userId) {
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("사용자 검색 실패"));
 
-        // 이미 존재하는 태그 필터링
-        List<String> existingTags = userTagRepository.findTagByUser(user).stream()
-                .map(UserTagEntity::getTagName)
-                .collect(Collectors.toList());
+        // 기존 태그 전부 삭제
+        userTagRepository.deleteByUser(user);
 
-        // 중복되지 않는 태그만 추가
-        List<UserTagEntity> newTags = tagNames.stream()
+        // 안의 데이터의 중복제거
+        List<String> uniqueTagNames = new ArrayList<>(new HashSet<>(tagNames));
+
+        // 새로운 태그 추가
+        List<UserTagEntity> newTags = uniqueTagNames.stream()
                 .distinct()
-                .filter(tagName -> !existingTags.contains(tagName)) // 중복 방지
                 .map(tagName -> UserTagEntity.builder()
                         .tagName(tagName)
                         .user(user)

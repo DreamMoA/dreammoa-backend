@@ -47,6 +47,15 @@ dependencies {
 	implementation 'org.springframework.cloud:spring-cloud-starter-aws:2.2.6.RELEASE'
 	implementation 'org.jsoup:jsoup:1.15.4'
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+	// Elasticsearch Spring Boot Starter
+	implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
+	// 최신 Elasticsearch Java 클라이언트 (8.17.0)
+	implementation 'co.elastic.clients:elasticsearch-java:8.17.0'
+	// https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient
+	implementation 'org.apache.httpcomponents:httpclient:4.5.13'
+	// https://mvnrepository.com/artifact/com.fasterxml.jackson.datatype/jackson-datatype-jsr310
+	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.2'
+
 }
 
 tasks.named('test') {

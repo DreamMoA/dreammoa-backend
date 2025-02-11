@@ -24,10 +24,10 @@ public class ChallengeLogService {
     @Transactional
     public void saveStudyLog(UserEntity user, ChallengeEntity challenge, ChallengeExitRequest exitData) {
 
-        LocalDate recordDate = exitData.getRecordAt(); // 클라이언트에서 보낸 기록 날짜
+        LocalDate recordAt = exitData.getRecordAt(); // 클라이언트에서 보낸 기록 날짜
         System.out.println("exitData.isSuccess(): " + exitData.getIsSuccess());
         Optional<ChallengeLogEntity> existingLog = challengeLogRepository
-                .findByUserAndChallengeAndRecordAt(user, challenge, recordDate);
+                .findByUserAndChallengeAndRecordAt(user, challenge, recordAt);
         if (existingLog.isPresent()) {
             // ✅ 기존 기록이 있다면 업데이트
             ChallengeLogEntity log = existingLog.get();
@@ -40,7 +40,7 @@ public class ChallengeLogService {
             ChallengeLogEntity log = ChallengeLogEntity.builder()
                     .user(user)
                     .challenge(challenge)
-                    .recordAt(recordDate)
+                    .recordAt(recordAt)
                     .pureStudyTime(exitData.getPureStudyTime())
                     .screenTime(exitData.getScreenTime())
                     .isSuccess(exitData.getIsSuccess())
@@ -48,9 +48,9 @@ public class ChallengeLogService {
             challengeLogRepository.save(log);
         }
     }
-    public Optional<ChallengeLogEntity> loadStudyLog(UserEntity user, ChallengeEntity challenge, LocalDate loadDate) {
+    public Optional<ChallengeLogEntity> loadStudyLog(UserEntity user, ChallengeEntity challenge, LocalDate recordAt) {
         try {
-            return challengeLogRepository.findByUserAndChallengeAndRecordAt(user, challenge, loadDate);
+            return challengeLogRepository.findByUserAndChallengeAndRecordAt(user, challenge, recordAt);
         } catch (DataAccessException e) {
             log.error("학습 기록을 불러오는 중 오류 발생: {}", e.getMessage(), e);
             return Optional.empty(); // 예외 발생 시 빈 Optional 반환

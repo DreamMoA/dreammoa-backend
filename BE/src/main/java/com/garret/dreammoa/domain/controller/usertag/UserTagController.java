@@ -28,22 +28,13 @@ public class UserTagController {
     }
 
     /**
-     * 여러 개의 태그 추가 (DTO 사용)
+     * 태그 추가를 아예 다 삭제하고 다시 추가하는 느낌으로 (여러개 추가했다 삭제했다 할때 2번 안보내고 한번으로 처리 - FE 편의성)
      */
     @PostMapping
-    public ResponseEntity<List<UserTagResponseDto>> addTags(@RequestBody UserTagRequestDto requestDto) {
+    public ResponseEntity<List<UserTagResponseDto>> resetTags(@RequestBody UserTagRequestDto requestDto) {
         Long userId = securityUtil.getCurrentUser().getId();
-        List<UserTagResponseDto> createdTags = tagService.addTags(requestDto.getTagNames(), userId);
+        List<UserTagResponseDto> createdTags = tagService.resetTags(requestDto.getTagNames(), userId);
         return ResponseEntity.ok(createdTags);
     }
 
-    /**
-     *  여러 개의 태그 삭제 (배열 지원)
-     */
-    @DeleteMapping
-    public ResponseEntity<String> deleteTags(@RequestBody UserTagRequestDto requestDto) {
-        Long userId = securityUtil.getCurrentUser().getId();
-        tagService.deleteTagsByNames(requestDto.getTagNames(), userId);
-        return ResponseEntity.ok("태그 삭제 완료");
-    }
 }
