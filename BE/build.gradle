@@ -53,6 +53,9 @@ dependencies {
 	implementation 'co.elastic.clients:elasticsearch-java:8.17.0'
 	// https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient
 	implementation 'org.apache.httpcomponents:httpclient:4.5.13'
+	// https://mvnrepository.com/artifact/com.fasterxml.jackson.datatype/jackson-datatype-jsr310
+	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.2'
+
 }
 
 tasks.named('test') {

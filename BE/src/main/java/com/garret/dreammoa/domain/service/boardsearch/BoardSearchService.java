@@ -1,6 +1,7 @@
 package com.garret.dreammoa.domain.service.boardsearch;
 
 import com.garret.dreammoa.domain.document.BoardDocument;
+import com.garret.dreammoa.domain.dto.board.responsedto.PageResponseDto;
 
 import java.util.List;
 
@@ -10,5 +11,8 @@ public interface BoardSearchService {
      * @param keyword 검색할 키워드
      * @return 검색된 게시글 목록
      */
-    List<BoardDocument> searchBoards(String keyword);
+
+    PageResponseDto<BoardDocument> searchBoards(String keyword, int page, int size);
+
+    PageResponseDto<BoardDocument> searchSemanticBoards(String keyword, int page, int size, boolean topOnly);
 }
