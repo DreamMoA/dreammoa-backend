@@ -16,6 +16,9 @@ public interface CommentService {
     //댓글 삭제
     void deleteComment(Long postId, Long commentId);
 
+    //댓글 개수 조회
+    int getCommentCount(Long postId);
+
     //특정 게시글의 모든 댓글 조회
     List<CommentResponseDto> getCommentsByPostId(Long postId);
 

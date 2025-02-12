@@ -129,13 +129,17 @@ public class UserService {
             throw new RuntimeException("토큰에서 유저 정보를 가져올 수 없습니다.");
         }
 
+        // 사용자 엔티티 조회 (role 값을 가져오기 위함)
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+
         // 사용자 ID로 프로필 URL 가져오기
         Optional<FileEntity> profilePicture = fileRepository.findByRelatedIdAndRelatedType(userId, FileEntity.RelatedType.PROFILE)
                 .stream().findFirst();
         String profileUrl = profilePicture.map(FileEntity::getFileUrl).orElse(null);
 
-        // 유저 정보 반환
-        return new UserResponse(email, name, nickname, profileUrl);
+        // id, email, name, nickname, profilePictureUrl, role 모두 포함하여 반환
+        return new UserResponse(userId, email, name, nickname, profileUrl, user.getRole().name());
     }
 
     public String findByEmailByNicknameAndName(String nickname, String name) {
@@ -297,7 +301,7 @@ public class UserService {
             profileUrl = profilePicture.map(FileEntity::getFileUrl).orElse(null);
         }
 
-        // DB의 사용자 정보를 기반으로 UserResponse DTO 생성 및 반환
-        return new UserResponse(user.getEmail(), user.getName(), user.getNickname(), profileUrl);
+        // DB의 사용자 정보를 기반으로 UserResponse DTO 생성 및 반환 (id와 role 추가)
+        return new UserResponse(user.getId(), user.getEmail(), user.getName(), user.getNickname(), profileUrl, user.getRole().name());
     }
 }

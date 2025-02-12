@@ -20,4 +20,6 @@ public interface UserTagRepository extends JpaRepository<UserTagEntity, Long> {
     Optional<UserTagEntity> findTagByIdAndUser(Long id, UserEntity user);
 
     boolean existsByUserAndTagName(UserEntity user, String tagName);
+
+    void deleteByUser(UserEntity user);
 }

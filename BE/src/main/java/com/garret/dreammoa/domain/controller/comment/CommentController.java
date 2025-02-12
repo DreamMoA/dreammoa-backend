@@ -46,6 +46,13 @@ public class CommentController {
         return ResponseEntity.status(HttpStatus.OK).body(null);
     }
 
+    //댓글 개수 조회
+    @GetMapping("/comment-count")
+    public ResponseEntity<Integer> getCommentCount(@PathVariable("postId") Long postId){
+        int count = commentService.getCommentCount(postId);
+        return ResponseEntity.ok(count);
+    }
+
     //특정 게시글의 모든 댓글 조회
     /*
     기능 : 특정 게시글(postId)에 달린 모든 댓글을 평면적인 리스트 형태로 조회

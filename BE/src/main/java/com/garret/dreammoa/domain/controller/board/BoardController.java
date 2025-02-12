@@ -168,4 +168,13 @@ public class BoardController {
         Page<BoardResponseDto> result = boardService.getBoardListSortedByCommentCount(pageable, boardCategory);
         return ResponseEntity.ok(result);
     }
+
+    //태그 검색
+    @GetMapping("/search-by-tag")
+    public ResponseEntity<Page<BoardResponseDto>> searchByTag(
+            @RequestParam String tag,
+            @PageableDefault(page = 0, size = 7) Pageable pageable) {
+        Page<BoardResponseDto> results = boardService.searchByTag(tag, pageable);
+        return ResponseEntity.ok(results);
+    }
 }

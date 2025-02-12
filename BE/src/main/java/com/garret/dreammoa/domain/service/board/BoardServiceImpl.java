@@ -1,16 +1,15 @@
 package com.garret.dreammoa.domain.service.board;
 
+import com.garret.dreammoa.domain.document.BoardDocument;
 import com.garret.dreammoa.domain.dto.board.requestdto.BoardRequestDto;
 import com.garret.dreammoa.domain.dto.board.responsedto.BoardResponseDto;
 import com.garret.dreammoa.domain.dto.user.CustomUserDetails;
-import com.garret.dreammoa.domain.model.BoardEntity;
-import com.garret.dreammoa.domain.model.FileEntity;
-import com.garret.dreammoa.domain.model.UserEntity;
-import com.garret.dreammoa.domain.repository.BoardRepository;
-import com.garret.dreammoa.domain.repository.CommentRepository;
-import com.garret.dreammoa.domain.repository.UserRepository;
+import com.garret.dreammoa.domain.model.*;
+import com.garret.dreammoa.domain.repository.*;
 import com.garret.dreammoa.domain.service.FileService;
+import com.garret.dreammoa.domain.service.embedding.EmbeddingService;
 import com.garret.dreammoa.domain.service.like.LikeService;
+import com.garret.dreammoa.domain.service.tag.TagService;
 import com.garret.dreammoa.domain.service.viewcount.ViewCountService;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -25,17 +24,17 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.springframework.web.client.RestTemplate;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -55,6 +54,11 @@ public class BoardServiceImpl implements BoardService {
     private final @Qualifier("boardDtoRedisTemplate") RedisTemplate<String, BoardResponseDto> boardDtoRedisTemplate;
     // 문자열 전용 RedisTemplate (댓글 수와 같은 단순 값을 위한 캐싱)
     private final RedisTemplate<String, String> redisTemplate;
+    private final BoardSearchRepository boardSearchRepository;
+    private final EmbeddingService embeddingService;
+    private final TagService tagService;
+    private final BoardTagRepository boardTagRepository;
+    private final LikeRepository likeRepository;
 
     @PostConstruct
     public void initializeBoardCount() {
@@ -101,12 +105,18 @@ public class BoardServiceImpl implements BoardService {
         // 게시글을 먼저 저장하여 postId를 확보 (저장 후엔 board.getPostId()가 생성됨)
         BoardEntity savedBoard = boardRepository.saveAndFlush(board);
 
+        // 태그 저장
+        saveTagsForBoard(savedBoard, dto.getTags());
+
         // 확보된 postId를 사용해 Quill 본문 내의 Base64 이미지를 S3 업로드하고 URL로 치환
         String finalContent = parseAndUploadBase64Images(dto.getContent(), savedBoard.getPostId());
 
         // 치환된 최종 HTML을 다시 board 객체에 반영한 후 UPDATE
         savedBoard.setContent(finalContent);
         BoardEntity updatedBoard = boardRepository.saveAndFlush(savedBoard);
+
+        // Elasticsearch에 동기화
+        syncToElasticsearch(updatedBoard);
 
         // 트랜잭션 커밋 후 Redis 업데이트
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -159,6 +169,20 @@ public class BoardServiceImpl implements BoardService {
         return doc.body().html();
     }
 
+    private void saveTagsForBoard(BoardEntity board, List<String> tagNames) {
+        if (tagNames == null || tagNames.isEmpty()) {
+            return;
+        }
+
+        List<TagEntity> tags = tagService.getOrCreateTags(tagNames);
+
+        List<BoardTagEntity> boardTags = tags.stream()
+                .map(tag -> BoardTagEntity.builder().board(board).tag(tag).build())
+                .collect(Collectors.toList());
+
+        boardTagRepository.saveAll(boardTags);
+    }
+
     /**
      * UPDATE
      */
@@ -183,7 +207,13 @@ public class BoardServiceImpl implements BoardService {
             board.setContent(finalContent);
         }
 
+        // 기존 태그를 유지하면서 추가/삭제 반영
+        updateTagsForBoard(board, dto.getTags());
+
         BoardEntity updated = boardRepository.save(board);
+
+        // Elasticsearch에 동기화
+        syncToElasticsearch(updated);
 
         // 캐시 삭제
         String cacheKey = "board:" + postId;
@@ -191,6 +221,37 @@ public class BoardServiceImpl implements BoardService {
 
         int viewCount = viewCountService.getViewCount(postId);
         return convertToResponseDto(updated, viewCount);
+    }
+
+    //기존 태그를 유지하면서 추가/삭제 반영하는 메서드
+    private void updateTagsForBoard(BoardEntity board, List<String> newTagNames) {
+        if (newTagNames == null) {
+            newTagNames = List.of(); // Null 방지
+        }
+
+        List<String> newTagNamesList = new ArrayList<>(newTagNames);
+
+        // 현재 게시글에 연결된 태그 리스트 가져오기
+        List<BoardTagEntity> existingBoardTags = boardTagRepository.findByBoard(board);
+        List<String> existingTagNames = existingBoardTags.stream()
+                .map(bt -> bt.getTag().getTagName())
+                .collect(Collectors.toList());
+
+        // 추가해야 할 태그 찾기 (기존에 없던 태그만 추가)
+        List<String> tagsToAdd = newTagNames.stream()
+                .filter(tag -> !existingTagNames.contains(tag))
+                .collect(Collectors.toList());
+
+        // 삭제해야 할 태그 찾기 (새로운 태그 목록에 없는 기존 태그 삭제)
+        List<BoardTagEntity> tagsToRemove = existingBoardTags.stream()
+                .filter(bt -> !newTagNamesList.contains(bt.getTag().getTagName()))
+                .collect(Collectors.toList());
+
+        // 태그 추가
+        saveTagsForBoard(board, tagsToAdd);
+
+        // 태그 삭제
+        boardTagRepository.deleteAll(tagsToRemove);
     }
 
     //==============================================================================
@@ -281,6 +342,13 @@ public class BoardServiceImpl implements BoardService {
             throw new RuntimeException("본인이 작성한 글만 삭제할 수 있습니다.");
         }
 
+        commentRepository.deleteByBoard(board);
+
+        likeRepository.deleteByBoard(board);
+
+        // Elasticsearch에서 해당 게시글 삭제
+        boardSearchRepository.deleteByDocumentId(postId);
+
         boardRepository.delete(board);
 
         redisTemplate.opsForValue().decrement("board:count", 1);
@@ -341,12 +409,23 @@ public class BoardServiceImpl implements BoardService {
     @Override
     public Page<BoardResponseDto> getBoardListSortedByNewest(Pageable pageable, BoardEntity.Category category) {
         // Repository에서 카테고리 필터링 후 생성일자(createdAt) 내림차순 정렬 및 페이징 처리
-        Page<BoardEntity> boardPage = boardRepository.findAllByCategoryOrderByCreatedAtDesc(category, pageable);
+//        Page<BoardEntity> boardPage = boardRepository.findAllByCategoryOrderByCreatedAtDesc(category, pageable);
+
+        Page<BoardEntity> boardPage = boardRepository.findAllByCategoryWithTags(category, pageable);
+
+        return boardPage.map(board -> {
+            int viewCount = board.getViewCount().intValue();
+            int likeCount = likeService.getLikeCount(board.getPostId());
+
+            // ✅ 여기서는 이미 태그를 가져왔으므로 `boardTagRepository`를 호출할 필요 없음!
+            List<String> tags = board.getBoardTags().stream()
+                    .map(bt -> bt.getTag().getTagName())
+                    .collect(Collectors.toList());
 
         // BoardEntity -> BoardResponseDto 변환
-        Page<BoardResponseDto> dtoPage = boardPage.map(board -> {
+//        Page<BoardResponseDto> dtoPage = boardPage.map(board -> {
             // 만약 DB의 viewCount가 최신값이라고 가정 (또는 필요 시 viewCountService를 호출)
-            int viewCount = board.getViewCount().intValue();
+//            int viewCount = board.getViewCount().intValue();
             return BoardResponseDto.builder()
                     .postId(board.getPostId())
                     .userId(board.getUser().getId())
@@ -359,18 +438,24 @@ public class BoardServiceImpl implements BoardService {
                     .viewCount(viewCount)
                     .likeCount(likeService.getLikeCount(board.getPostId()))
                     .commentCount(0)  // 댓글 수 처리는 필요 시 구현
+                    .tags(tags)
                     .build();
         });
-        return dtoPage;
+//        return dtoPage;
     }
 
     @Override
     public Page<BoardResponseDto> getBoardListSortedByViewCount(Pageable pageable, BoardEntity.Category category) {
-        // 올바른 Repository 메서드를 호출합니다.
         Page<BoardEntity> boardPage = boardRepository.findAllByCategoryOrderByViewCountDesc(category, pageable);
 
-        Page<BoardResponseDto> dtoPage = boardPage.map(board -> {
+        return boardPage.map(board -> {
             int viewCount = board.getViewCount().intValue();
+
+            // ✅ 태그 리스트 가져오기
+            List<String> tags = board.getBoardTags().stream()
+                    .map(bt -> bt.getTag().getTagName())
+                    .collect(Collectors.toList());
+
             return BoardResponseDto.builder()
                     .postId(board.getPostId())
                     .userId(board.getUser().getId())
@@ -382,18 +467,22 @@ public class BoardServiceImpl implements BoardService {
                     .updatedAt(board.getUpdatedAt())
                     .viewCount(viewCount)
                     .likeCount(likeService.getLikeCount(board.getPostId()))
-                    .commentCount(0) // 댓글 수 처리는 필요에 따라 구현
+                    .commentCount(0)
+                    .tags(tags) // ✅ 태그 추가됨!
                     .build();
         });
-        return dtoPage;
     }
 
     @Override
     public Page<BoardResponseDto> getBoardListSortedByLikeCount(Pageable pageable, BoardEntity.Category category) {
-        // DB에서 해당 카테고리의 게시글을 좋아요 수(likeCount) 기준 내림차순 정렬 및 페이징 처리
         Page<BoardEntity> boardPage = boardRepository.findAllByCategoryOrderByLikeCountDesc(category, pageable);
 
-        Page<BoardResponseDto> dtoPage = boardPage.map(board -> {
+        return boardPage.map(board -> {
+            // ✅ 태그 리스트 가져오기
+            List<String> tags = board.getBoardTags().stream()
+                    .map(bt -> bt.getTag().getTagName())
+                    .collect(Collectors.toList());
+
             return BoardResponseDto.builder()
                     .postId(board.getPostId())
                     .userId(board.getUser().getId())
@@ -404,19 +493,23 @@ public class BoardServiceImpl implements BoardService {
                     .createdAt(board.getCreatedAt())
                     .updatedAt(board.getUpdatedAt())
                     .viewCount(board.getViewCount().intValue())
-                    .likeCount(board.getLikeCount())  // DB 컬럼의 likeCount 사용
-                    .commentCount(0)  // 댓글 수는 필요에 따라 구현
+                    .likeCount(board.getLikeCount())
+                    .commentCount(0)
+                    .tags(tags) // ✅ 태그 추가됨!
                     .build();
         });
-        return dtoPage;
     }
 
     @Override
     public Page<BoardResponseDto> getBoardListSortedByCommentCount(Pageable pageable, BoardEntity.Category category) {
-        // DB에서 commentCount를 기준으로 정렬하여 페이징 처리
         Page<BoardEntity> boardPage = boardRepository.findAllByCategoryOrderByCommentCountDesc(category, pageable);
 
-        Page<BoardResponseDto> dtoPage = boardPage.map(board -> {
+        return boardPage.map(board -> {
+            // ✅ 태그 리스트 가져오기
+            List<String> tags = board.getBoardTags().stream()
+                    .map(bt -> bt.getTag().getTagName())
+                    .collect(Collectors.toList());
+
             return BoardResponseDto.builder()
                     .postId(board.getPostId())
                     .userId(board.getUser().getId())
@@ -429,9 +522,97 @@ public class BoardServiceImpl implements BoardService {
                     .viewCount(board.getViewCount().intValue())
                     .likeCount(board.getLikeCount())
                     .commentCount(board.getCommentCount())
+                    .tags(tags) // ✅ 태그 추가됨!
                     .build();
         });
-        return dtoPage;
+    }
+
+//    @Override
+//    public Page<BoardResponseDto> getBoardListSortedByViewCount(Pageable pageable, BoardEntity.Category category) {
+//        // 올바른 Repository 메서드를 호출합니다.
+//        Page<BoardEntity> boardPage = boardRepository.findAllByCategoryOrderByViewCountDesc(category, pageable);
+//
+//        Page<BoardResponseDto> dtoPage = boardPage.map(board -> {
+//            int viewCount = board.getViewCount().intValue();
+//            return BoardResponseDto.builder()
+//                    .postId(board.getPostId())
+//                    .userId(board.getUser().getId())
+//                    .userNickname(board.getUser().getNickname())
+//                    .category(board.getCategory())
+//                    .title(board.getTitle())
+//                    .content(board.getContent())
+//                    .createdAt(board.getCreatedAt())
+//                    .updatedAt(board.getUpdatedAt())
+//                    .viewCount(viewCount)
+//                    .likeCount(likeService.getLikeCount(board.getPostId()))
+//                    .commentCount(0) // 댓글 수 처리는 필요에 따라 구현
+//                    .build();
+//        });
+//        return dtoPage;
+//    }
+
+//    @Override
+//    public Page<BoardResponseDto> getBoardListSortedByLikeCount(Pageable pageable, BoardEntity.Category category) {
+//        // DB에서 해당 카테고리의 게시글을 좋아요 수(likeCount) 기준 내림차순 정렬 및 페이징 처리
+//        Page<BoardEntity> boardPage = boardRepository.findAllByCategoryOrderByLikeCountDesc(category, pageable);
+//
+//        Page<BoardResponseDto> dtoPage = boardPage.map(board -> {
+//            return BoardResponseDto.builder()
+//                    .postId(board.getPostId())
+//                    .userId(board.getUser().getId())
+//                    .userNickname(board.getUser().getNickname())
+//                    .category(board.getCategory())
+//                    .title(board.getTitle())
+//                    .content(board.getContent())
+//                    .createdAt(board.getCreatedAt())
+//                    .updatedAt(board.getUpdatedAt())
+//                    .viewCount(board.getViewCount().intValue())
+//                    .likeCount(board.getLikeCount())  // DB 컬럼의 likeCount 사용
+//                    .commentCount(0)  // 댓글 수는 필요에 따라 구현
+//                    .build();
+//        });
+//        return dtoPage;
+//    }
+//
+//    @Override
+//    public Page<BoardResponseDto> getBoardListSortedByCommentCount(Pageable pageable, BoardEntity.Category category) {
+//        // DB에서 commentCount를 기준으로 정렬하여 페이징 처리
+//        Page<BoardEntity> boardPage = boardRepository.findAllByCategoryOrderByCommentCountDesc(category, pageable);
+//
+//        Page<BoardResponseDto> dtoPage = boardPage.map(board -> {
+//            return BoardResponseDto.builder()
+//                    .postId(board.getPostId())
+//                    .userId(board.getUser().getId())
+//                    .userNickname(board.getUser().getNickname())
+//                    .category(board.getCategory())
+//                    .title(board.getTitle())
+//                    .content(board.getContent())
+//                    .createdAt(board.getCreatedAt())
+//                    .updatedAt(board.getUpdatedAt())
+//                    .viewCount(board.getViewCount().intValue())
+//                    .likeCount(board.getLikeCount())
+//                    .commentCount(board.getCommentCount())
+//                    .build();
+//        });
+//        return dtoPage;
+//    }
+
+    @Override
+    public Page<BoardResponseDto> searchByTag(String tag, Pageable pageable) {
+        //태그가 포함된 게시글 id 리스트 조회
+        List<Long> boardIds = boardTagRepository.findBoardIdsByTagName(tag);
+
+        // ID가 없으면 빈 페이지 반환
+        if (boardIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        //해당 id를 가진 게시글을 페이지네이션 처리하여 조회
+        Page<BoardEntity> boardPage = boardRepository.findByPostIdIn(boardIds, pageable);
+
+        //BoardEntity -> BoardResponseDto 변화 후 반환
+        return boardPage.map(board -> convertToResponseDto(board, viewCountService.getViewCount(board.getPostId())));
+
     }
 
 
@@ -455,6 +636,50 @@ public class BoardServiceImpl implements BoardService {
         }
     }
 
+    /**
+     * Elasticsearch 동기화 (MySQL -> Elasticsearch)
+     */
+    private void syncToElasticsearch(BoardEntity board) {
+        try {
+            // 게시글 제목과 내용을 결합하여 임베딩 계산
+            String textForEmbedding = board.getTitle() + " " + board.getContent();
+            float[] embedding = embeddingService.getEmbedding(textForEmbedding);
+
+            // 임베딩 계산이 실패했거나 빈 배열이면 기본 384차원 0.0 배열 사용 (Java에서는 new float[384]가 0.0으로 초기화됨)
+            if (embedding == null || embedding.length == 0) {
+                embedding = new float[384];
+            }
+
+            // float[]를 List<Double>로 변환 (JSON 직렬화를 위해)
+            List<Double> embeddingList = new ArrayList<>();
+            for (float value : embedding) {
+                embeddingList.add((double) value);
+            }
+
+            // BoardDocument 객체에 임베딩 필드 추가
+            BoardDocument boardDocument = BoardDocument.builder()
+                    .id(board.getPostId())
+                    .userId(board.getUser().getId())
+                    .userNickname(board.getUser().getNickname())
+                    .category(board.getCategory().name())
+                    .title(board.getTitle())
+                    .content(board.getContent())
+                    .createdAt(board.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli())
+                    .updatedAt(board.getUpdatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli())
+                    .viewCount(board.getViewCount().intValue())
+                    .embedding(embeddingList)  // ← 임베딩 값 추가 (기본값도 포함됨)
+                    .build();
+
+            boardSearchRepository.index(boardDocument);
+            log.info("✅ Elasticsearch 동기화 완료 - 게시글 ID: {}", board.getPostId());
+        } catch (Exception e) {
+            log.error("❌ Elasticsearch 동기화 중 오류 발생: ", e);
+        }
+    }
+
+
+
+
     private Long getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -472,6 +697,11 @@ public class BoardServiceImpl implements BoardService {
     }
 
     private BoardResponseDto convertToResponseDto(BoardEntity board, int viewCount, int commentCount) {
+        //해당 게시글에 연결된 태그 목록 가져오기
+        List<String> tags = boardTagRepository.findByBoard(board).stream()
+                .map(boardTag -> boardTag.getTag().getTagName()) //태그 이름 리스트 변환
+                .collect(Collectors.toList());
+
         return BoardResponseDto.builder()
                 .postId(board.getPostId())
                 .userId(board.getUser().getId())
@@ -483,6 +713,9 @@ public class BoardServiceImpl implements BoardService {
                 .updatedAt(board.getUpdatedAt())
                 .viewCount(viewCount)
                 .commentCount(commentCount)
+                .tags(tags)
                 .build();
     }
+
+
 }
