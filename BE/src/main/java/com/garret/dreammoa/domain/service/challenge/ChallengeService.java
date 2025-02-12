@@ -8,6 +8,7 @@ import com.garret.dreammoa.domain.model.*;
 import com.garret.dreammoa.domain.repository.*;
 import com.garret.dreammoa.domain.service.FileService;
 import com.garret.dreammoa.domain.service.tag.TagServiceImpl;
+import com.garret.dreammoa.utils.EncryptionUtil;
 import com.garret.dreammoa.utils.SecurityUtil;
 import io.openvidu.java.client.OpenViduHttpException;
 import io.openvidu.java.client.OpenViduJavaClientException;
@@ -43,6 +44,7 @@ public class ChallengeService {
     private final OpenViduService openViduService;
     private final ParticipantHistoryService participantHistoryService;
     private final ChallengeLogService challengeLogService;
+    private final EncryptionUtil encryptionUtil;
 
     @Transactional
     public ResponseEntity<ChallengeResponse> createChallenge(
@@ -328,6 +330,39 @@ public List<MyChallengeResponseDto> getMyChallenges() {
                     .remainingDays(remainingDays)
                     .build();
         }).collect(Collectors.toList());
+    }
+
+   public ChallengeEntity getChallengeById(Long challengeId){
+        return challengeRepository.findById(challengeId).orElse(null);
+   }
+
+   public String generateInviteUrl(Long challengeId) throws Exception {
+        ChallengeEntity challenge = getChallengeById(challengeId);
+        if(challenge == null){
+            throw new IllegalArgumentException("해당 첼린지를 찾을 수 없습니다.");
+        }
+
+        // 1. 첼린지 ID 암호화 및 URL-safe Base 64 인코딩
+        String encryptedId = encryptionUtil.encrypt(String.valueOf(challengeId));
+        String encodedId = Base64.getUrlEncoder().encodeToString(encryptedId.getBytes());
+
+       return "http://localhost:5173/challenges/invite/accept?encryptedId=" + encodedId;
+
+   }
+
+   
+   // 초대 URL 수락 -> 첼린지 상세조회
+   public ResponseEntity<?> acceptInvite(String encodedId) throws Exception {
+
+       // 1. Base64 디코딩 후 체린지 ID 문자열 추출
+       String encryptedId = new String(Base64.getUrlDecoder().decode(encodedId));
+
+       // 2. 복호화를 통해 원래 첼린지 ID 문자열 추출
+       String challengeIdStr = encryptionUtil.decrypt(encryptedId);
+       Long challengeId = Long.parseLong(challengeIdStr);
+
+       // 3. 추출한 챌린지 ID로 기존 상세 조회 호출
+       return getChallengeInfo(challengeId);
     }
 }
 

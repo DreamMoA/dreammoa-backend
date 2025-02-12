@@ -114,7 +114,7 @@ public class SecurityConfig {
                                 .requestMatchers("/random-determinations","/ending-soon",
                                         "/total-screen-time", "/login","/", "/error", "/refresh", "/top-viewed", "/openvidu/**", "/join","/email-find","/pw-find","/openvidu/**",
                                         "/send-verification-code", "/verify-email-code", "/check-email", "/check-nickname",
-                                        "/challenges/*/info",
+                                        "/challenges/*/info", "/challenges/invite/**",
                                         "/tags", "/user-tags")
                                 .permitAll()
                                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()

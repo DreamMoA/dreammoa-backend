@@ -80,4 +80,16 @@ public class ChallengeController {
         return ResponseEntity.ok(myChallenges);
     }
 
+    @GetMapping("/invite/{challengeId}")
+    public ResponseEntity<String> generateChallengeInviteUrl(@PathVariable Long challengeId) throws Exception {
+        return ResponseEntity.ok(challengeService.generateInviteUrl(challengeId));
+    }
+
+    @GetMapping("/invite/accept")
+    public ResponseEntity<?> acceptInvite(@RequestParam("encryptedId") String encodedId) throws Exception {
+        return challengeService.acceptInvite(encodedId);
+    }
+
+
+
 }
