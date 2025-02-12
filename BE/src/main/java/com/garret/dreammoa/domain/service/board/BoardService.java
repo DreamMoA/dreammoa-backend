@@ -48,13 +48,11 @@ public interface BoardService {
     //댓글수 기준 정렬(내림차순) + 페이징
     Page<BoardResponseDto> getBoardListSortedByCommentCount(Pageable pageable, BoardEntity.Category category);
 
-    /**
-     * DB의 실제 게시글 개수로 Redis 카운터를 재초기화한다.
-     */
+    // 태그 검색
+    Page<BoardResponseDto> searchByTag(String tag, Pageable pageable);
+
+    //DB의 실제 게시글 개수로 Redis 카운터를 재초기
     void reinitializeCounters();
 
-//    Page<BoardResponseDto> getBoardList(int page);
-
-//    Page<BoardResponseDto> getBoardList(int page, String category);
 
 }

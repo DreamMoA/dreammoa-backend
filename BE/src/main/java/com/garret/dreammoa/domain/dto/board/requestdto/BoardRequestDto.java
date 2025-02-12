@@ -14,4 +14,5 @@ public class BoardRequestDto {
     private String title;
     private String content;
     private List<Long> fileIds;
+    private List<String> tags;
 }
