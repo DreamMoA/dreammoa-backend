@@ -16,12 +16,5 @@ public class MyChallengeResponseDto {
     private LocalDateTime expireDate;
     private Boolean isActive;
     private List<String> tags;
-    private HostInfo host;
-
-    @Data
-    public static class HostInfo {
-        private Long hostId;
-        private String nickname;
-        private String profilePictureUrl;
-    }
+    private String thumbnail;
 }
