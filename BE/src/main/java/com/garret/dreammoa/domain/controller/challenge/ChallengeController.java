@@ -23,7 +23,6 @@ import java.util.List;
 public class ChallengeController {
 
     private final ChallengeService challengeService;
-
     @PostMapping("/create")
     public ResponseEntity<ChallengeResponse> createChallenge(
             @RequestPart(value = "challengeData") @Valid ChallengeCreateRequest requestData,
@@ -82,23 +81,22 @@ public class ChallengeController {
         return ResponseEntity.ok(myChallenges);
     }
 
-    @GetMapping("/popular")
-    public ResponseEntity<List<MyChallengeResponseDto>> getPopularChallenges(
-            @RequestParam(required = false) List<String> tags){
-        List<MyChallengeResponseDto> popularChallenges  = challengeService.getPopularChallenges(tags);
-        return ResponseEntity.ok(popularChallenges);
+    @GetMapping("/tag-challenges")
+    public ResponseEntity<List<MyChallengeResponseDto>> getTagChallenges(
+            @RequestParam(required = false) String tags){
+        return challengeService.getTagChallenges(tags);
     }
 
     @GetMapping("/search")
     public ResponseEntity<SearchChallengeResponseDto> searchChallenges(
-            @RequestParam(required = false) List<String> tags,
+            @RequestParam(required = false) String tags,
             @RequestParam(required = false) String keyword) {
         return challengeService.searchChallenges(tags, keyword);
     }
 
     @GetMapping("/all-challenges")
     public ResponseEntity<PagedChallengeResponseDto<MyChallengeResponseDto>> getPopularChallenges(
-            @RequestParam(required = false) List<String> tags,
+            @RequestParam(required = false) String tags,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page) {
         return challengeService.getAllChallenges(tags, keyword, page);

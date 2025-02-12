@@ -110,7 +110,7 @@ public class SecurityConfig {
                                 // 특정 GET 요청 허용 (글 목록 조회만)
                                 .requestMatchers(HttpMethod.GET, "/boards").permitAll()
                                 .requestMatchers(HttpMethod.GET, "api/likes/**").permitAll()
-                                .requestMatchers(HttpMethod.GET, "/challenges/popular", "/challenges/search", "/challenges/all-challenges").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/challenges/tag-challenges", "/challenges/search", "/challenges/all-challenges").permitAll()
                                 //                        .requestMatchers("api/likes/**").authenticated()
                                 .requestMatchers("/random-determinations","/ending-soon",
                                         "/total-screen-time", "/login","/", "/error", "/refresh", "/top-viewed", "/openvidu/**", "/join","/email-find","/pw-find","/openvidu/**",

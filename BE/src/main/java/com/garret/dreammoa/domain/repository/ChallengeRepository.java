@@ -13,52 +13,55 @@ import java.util.List;
 
 @Repository
 public interface ChallengeRepository extends JpaRepository<ChallengeEntity,Long> {
-    List<ChallengeEntity> findTop20ByStartDateAfterOrderByStartDateAsc(LocalDateTime now);
-    @Query("SELECT c FROM ChallengeEntity c " +
-            "JOIN c.challengeTags ct " +
-            "JOIN ct.tag t " + // tag 객체와 조인
-            "LEFT JOIN c.challengeParticipants p " +
-            "WHERE t.tagName IN :tags " + // tagName을 tag 객체에서 가져옴
-            "GROUP BY c " +
-            "ORDER BY COUNT(ct.tag) DESC, COUNT(p) DESC")
-    List<ChallengeEntity> findPopularChallengesByTags(@Param("tags") List<String> tags, Pageable pageable);
 
-    // ⏳ 진행 중인 챌린지 조회
+    List<ChallengeEntity> findTop20ByStartDateAfterOrderByStartDateAsc(LocalDateTime now);
+
+    // ⏳ 진행 중인 챌린지 조회 (startDate ~ expireDate 사이 + 참가 가능)
     @Query("SELECT c FROM ChallengeEntity c " +
-            "LEFT JOIN c.challengeTags ct " +
-            "JOIN ct.tag t " +
-            "WHERE (:tags IS NULL OR t.tagName IN :tags) " +
+            "WHERE c.id IN :challengeIds " +
             "AND (:keyword IS NULL OR c.title LIKE %:keyword% OR c.description LIKE %:keyword%) " +
             "AND c.startDate <= :now AND c.expireDate >= :now " +
             "AND SIZE(c.challengeParticipants) < c.maxParticipants " +
-            "GROUP BY c " + // GROUP BY c 추가
-            "ORDER BY COUNT(t.tagName) DESC")
-    Page<ChallengeEntity> findRunningChallenges(@Param("tags") List<String> tags, @Param("keyword") String keyword, @Param("now") LocalDateTime now, Pageable pageable);
+            "ORDER BY SIZE(c.challengeParticipants) DESC")
+    Page<ChallengeEntity> findRunningChallenges(
+            @Param("challengeIds") List<Long> challengeIds,
+            @Param("keyword") String keyword,
+            @Param("now") LocalDateTime now,
+            Pageable pageable
+    );
 
-
-    // 📢 모집 중인 챌린지 조회
+    // 📢 모집 중인 챌린지 조회 (startDate 이전 + 참가 가능)
     @Query("SELECT c FROM ChallengeEntity c " +
-            "LEFT JOIN c.challengeTags ct " +
-            "JOIN ct.tag t " +
-            "WHERE (:tags IS NULL OR t.tagName IN :tags) " +
+            "WHERE c.id IN :challengeIds " +
             "AND (:keyword IS NULL OR c.title LIKE %:keyword% OR c.description LIKE %:keyword%) " +
             "AND c.startDate > :now " +
             "AND SIZE(c.challengeParticipants) < c.maxParticipants " +
-            "GROUP BY c " + // GROUP BY c 추가
-            "ORDER BY COUNT(t.tagName) DESC")
-    Page<ChallengeEntity> findRecruitingChallenges(@Param("tags") List<String> tags, @Param("keyword") String keyword, @Param("now") LocalDateTime now, Pageable pageable);
+            "ORDER BY SIZE(c.challengeParticipants) DESC")
+    Page<ChallengeEntity> findRecruitingChallenges(
+            @Param("challengeIds") List<Long> challengeIds,
+            @Param("keyword") String keyword,
+            @Param("now") LocalDateTime now,
+            Pageable pageable
+    );
 
-
-    // 🌟 인기 챌린지 (참가자 많은 순)
+    // 🌟 인기 챌린지 조회 (참가자 많은 순)
     @Query("SELECT c FROM ChallengeEntity c " +
-            "LEFT JOIN c.challengeTags ct " +
-            "JOIN ct.tag t " +
-            "WHERE (:tags IS NULL OR t.tagName IN :tags) " +
+            "WHERE c.id IN :challengeIds " +  // 이미 필터링된 challengeIds만 사용
             "AND (:keyword IS NULL OR c.title LIKE %:keyword% OR c.description LIKE %:keyword%) " +
-            "AND (:tags IS NULL OR EXISTS (" +
-            "   SELECT 1 FROM c.challengeTags ct1 " +
-            "   WHERE ct1.tag.tagName IN :tags)) " +  // 태그 조건
             "ORDER BY SIZE(c.challengeTags) DESC, SIZE(c.challengeParticipants) DESC")
-    Page<ChallengeEntity> findPopularChallenges(@Param("tags") List<String> tags, @Param("keyword") String keyword, Pageable pageable);
+    Page<ChallengeEntity> findPopularChallenges(
+            @Param("challengeIds") List<Long> challengeIds,
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
 
+    @Query("SELECT c FROM ChallengeEntity c WHERE c.id IN :challengeIds")
+    List<ChallengeEntity> findTagChallenges(@Param("challengeIds") List<Long> challengeIds);
+
+    @Query("SELECT c.id FROM ChallengeEntity c")
+    List<Long> findAllChallengeIds(Pageable pageable);
+
+    // 태그 없을 때 전체 챌린지 ID 조회 (페이징 없음)
+    @Query("SELECT c.id FROM ChallengeEntity c")
+    List<Long> findAllChallengeIds();
 }

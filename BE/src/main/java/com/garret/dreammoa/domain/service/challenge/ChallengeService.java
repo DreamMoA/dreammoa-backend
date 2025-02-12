@@ -1,11 +1,7 @@
 package com.garret.dreammoa.domain.service.challenge;
 
 import com.garret.dreammoa.domain.dto.challenge.requestdto.*;
-import com.garret.dreammoa.domain.dto.challenge.responsedto.ChallengeResponse;
-import com.garret.dreammoa.domain.dto.challenge.responsedto.EndingSoonChallengeDto;
-import com.garret.dreammoa.domain.dto.challenge.responsedto.MyChallengeResponseDto;
-import com.garret.dreammoa.domain.dto.challenge.responsedto.PagedChallengeResponseDto;
-import com.garret.dreammoa.domain.dto.challenge.responsedto.SearchChallengeResponseDto;
+import com.garret.dreammoa.domain.dto.challenge.responsedto.*;
 import com.garret.dreammoa.domain.model.*;
 import com.garret.dreammoa.domain.repository.*;
 import com.garret.dreammoa.domain.service.FileService;
@@ -49,6 +45,7 @@ public class ChallengeService {
     private final OpenViduService openViduService;
     private final ParticipantHistoryService participantHistoryService;
     private final ChallengeLogService challengeLogService;
+    private final ChallengeTagService challengeTagService;
 
     @Transactional
     public ResponseEntity<ChallengeResponse> createChallenge(
@@ -323,27 +320,77 @@ public class ChallengeService {
                 .collect(Collectors.toList());
     }
 
-    public ResponseEntity<SearchChallengeResponseDto> searchChallenges(List<String> tags, String keyword) {
+    public List<EndingSoonChallengeDto> getEndingSoonChallenges() {
+        LocalDateTime now = LocalDateTime.now();
+        List<ChallengeEntity> challenges = challengeRepository.findTop20ByStartDateAfterOrderByStartDateAsc(now);
+
+        return challenges.stream().map(challenge -> {
+            // 남은 일수 계산 (소수점 이하는 버림)
+            long remainingDays = Duration.between(now, challenge.getStartDate()).toDays();
+
+            // 해당 챌린지의 썸네일 조회
+            List<FileEntity> files = fileService.getFiles(challenge.getChallengeId(), FileEntity.RelatedType.CHALLENGE);
+            String thumbnail = (files != null && !files.isEmpty()) ? files.get(0).getFileUrl() : null;
+
+            return EndingSoonChallengeDto.builder()
+                    .challengeId(challenge.getChallengeId())
+                    .title(challenge.getTitle())
+                    .thumbnail(thumbnail)
+                    .remainingDays(remainingDays)
+                    .build();
+        }).collect(Collectors.toList());
+    }
+
+    public ResponseEntity<List<MyChallengeResponseDto>> getTagChallenges(String tags) {
+
+        // 페이징 설정
+        Pageable pageable = PageRequest.of(0, 8);
+
+        List<String> tagList = (tags == null || tags.isBlank()) ? Collections.emptyList() :
+                Arrays.stream(tags.split("\\s*,\\s*"))
+                        .collect(Collectors.toList());
+
+        // 태그 필터링할 챌린지 ID 가져오기
+        List<Long> challengeIds = tagList.isEmpty() ?
+                challengeRepository.findAllChallengeIds(pageable) :  // 태그 없을 때 전체 조회
+                challengeTagService.getChallengeIdsByTags(tagList, pageable);
+
+        //
+        List<ChallengeEntity> tagChallenges = challengeRepository.findTagChallenges(challengeIds);
+
+        tagChallenges.sort(Comparator.comparing(c -> challengeIds.indexOf(c.getChallengeId())));
+
+        return ResponseEntity.ok(tagChallenges.stream()
+                .map(this::toResponseDto)
+                .collect(Collectors.toList()));
+    }
+
+    public ResponseEntity<SearchChallengeResponseDto> searchChallenges(String tags, String keyword) {
 
         LocalDateTime now = LocalDateTime.now();
+        Pageable pageable = PageRequest.of(0, 8);
 
-        // ✅ tags와 keyword가 null일 수 있으니 기본값 처리
-        List<String> safeTags = tags != null ? tags : Collections.emptyList();
-        String safeKeyword = keyword != null ? keyword : "";
+        List<String> tagList = (tags == null || tags.isBlank()) ? Collections.emptyList() :
+                Arrays.stream(tags.split("\\s*,\\s*"))
+                        .collect(Collectors.toList());
+        // 태그 필터링할 챌린지 ID 가져오기
+        List<Long> challengeIds = tagList.isEmpty() ?
+                challengeRepository.findAllChallengeIds(pageable) :  // 태그 없을 때 전체 조회
+                challengeTagService.getChallengeIdsByTags(tagList, pageable);
 
         // ⏳ 진행 중 (startDate ~ expireDate 사이 + 참가 가능)
         Page<MyChallengeResponseDto> runningChallenges = challengeRepository
-                .findRunningChallenges(tags, keyword, now, PageRequest.of(0, 8))
+                .findRunningChallenges(challengeIds, keyword, now, pageable)
                 .map(this::toResponseDto);
 
         // 📢 모집 중 (startDate 이전 + 참가 가능)
         Page<MyChallengeResponseDto> recruitingChallenges = challengeRepository
-                .findRecruitingChallenges(tags, keyword, now, PageRequest.of(0, 8))
+                .findRecruitingChallenges(challengeIds, keyword, now, pageable)
                 .map(this::toResponseDto);
 
         // 🌟 인기 챌린지 (참가자 많은 순)
         Page<MyChallengeResponseDto> popularChallenges = challengeRepository
-                .findPopularChallenges(tags, keyword, PageRequest.of(0, 8))
+                .findPopularChallenges(challengeIds, keyword, pageable)
                 .map(this::toResponseDto);
 
         return ResponseEntity.ok(SearchChallengeResponseDto.builder()
@@ -353,11 +400,22 @@ public class ChallengeService {
                 .build());
     }
 
-    public ResponseEntity<PagedChallengeResponseDto<MyChallengeResponseDto>> getAllChallenges(List<String> tags, String keyword, int page) {
+    public ResponseEntity<PagedChallengeResponseDto<MyChallengeResponseDto>> getAllChallenges(String tags, String keyword, int page) {
 
         Pageable pageable = PageRequest.of(page, 8);
-        // 필터링 + 정렬된 데이터 가져오기
-        Page<ChallengeEntity> challengePage = challengeRepository.findPopularChallenges(tags, keyword, pageable);
+
+        // tags가 null 또는 빈 문자열이면 빈 리스트 처리
+        List<String> tagList = (tags == null || tags.isBlank()) ? Collections.emptyList() :
+                Arrays.stream(tags.split("\\s*,\\s*"))
+                        .collect(Collectors.toList());
+        System.out.println("tags = " + tags);
+        System.out.println("keyword = " + keyword);
+        // 태그 필터링할 챌린지 ID 가져오기
+        List<Long> challengeIds = tagList.isEmpty() ?
+                challengeRepository.findAllChallengeIds() :  // 태그 없을 때 전체 조회
+                challengeTagService.getChallengeIdsByTags(tagList);
+        System.out.println("challengeIds = " + challengeIds);
+        Page<ChallengeEntity> challengePage = challengeRepository.findPopularChallenges(challengeIds, keyword, pageable);
 
         List<MyChallengeResponseDto> challengeList = challengePage.stream()
                 .map(this::toResponseDto)
@@ -365,29 +423,6 @@ public class ChallengeService {
 
         PagedChallengeResponseDto<MyChallengeResponseDto> pagedResponse = toPagedResponse(challengePage, challengeList);
         return ResponseEntity.ok(pagedResponse);
-    }
-
-    public List<MyChallengeResponseDto> getPopularChallenges(List<String> tags) {
-
-        List<ChallengeEntity> popularChallenges = challengeRepository.findPopularChallengesByTags(tags, PageRequest.of(0, 8));
-        return popularChallenges.stream()
-                .map(challenge -> {
-                    List<String> tagNames = challenge.getChallengeTags().stream()
-                            .map(challengeTag -> challengeTag.getTag().getTagName())
-                            .collect(Collectors.toList());
-                    List<FileEntity> files = fileService.getFiles(challenge.getChallengeId(), FileEntity.RelatedType.CHALLENGE);
-                    String thumbnailUrl = files.isEmpty() ? null : files.get(0).getFileUrl();
-                    return MyChallengeResponseDto.builder()
-                            .challengeId(challenge.getChallengeId())
-                            .title(challenge.getTitle())
-                            .description(challenge.getDescription())
-                            .startDate(challenge.getStartDate())
-                            .expireDate(challenge.getExpireDate())
-                            .isActive(challenge.getIsActive())
-                            .tags(tagNames)
-                            .thumbnail(thumbnailUrl)
-                            .build();
-                }).collect(Collectors.toList());
     }
 
     private MyChallengeResponseDto toResponseDto(ChallengeEntity challenge) {
@@ -412,26 +447,6 @@ public class ChallengeService {
                 .build();
     }
 
-    public List<EndingSoonChallengeDto> getEndingSoonChallenges() {
-        LocalDateTime now = LocalDateTime.now();
-        List<ChallengeEntity> challenges = challengeRepository.findTop20ByStartDateAfterOrderByStartDateAsc(now);
-
-        return challenges.stream().map(challenge -> {
-            // 남은 일수 계산 (소수점 이하는 버림)
-            long remainingDays = Duration.between(now, challenge.getStartDate()).toDays();
-
-            // 해당 챌린지의 썸네일 조회
-            List<FileEntity> files = fileService.getFiles(challenge.getChallengeId(), FileEntity.RelatedType.CHALLENGE);
-            String thumbnail = (files != null && !files.isEmpty()) ? files.get(0).getFileUrl() : null;
-
-            return EndingSoonChallengeDto.builder()
-                    .challengeId(challenge.getChallengeId())
-                    .title(challenge.getTitle())
-                    .thumbnail(thumbnail)
-                    .remainingDays(remainingDays)
-                    .build();
-        }).collect(Collectors.toList());
-    }
     // ✅ Page 객체를 JSON으로 변환해주는 메서드
     private PagedChallengeResponseDto<MyChallengeResponseDto> toPagedResponse(Page<ChallengeEntity> page, List<MyChallengeResponseDto> list) {
         return PagedChallengeResponseDto.<MyChallengeResponseDto>builder()
