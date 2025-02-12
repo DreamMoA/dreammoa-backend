@@ -58,6 +58,7 @@ public class BoardServiceImpl implements BoardService {
     private final EmbeddingService embeddingService;
     private final TagService tagService;
     private final BoardTagRepository boardTagRepository;
+    private final LikeRepository likeRepository;
 
     @PostConstruct
     public void initializeBoardCount() {
@@ -340,6 +341,10 @@ public class BoardServiceImpl implements BoardService {
         if (!board.getUser().getId().equals(currentUserId)) {
             throw new RuntimeException("본인이 작성한 글만 삭제할 수 있습니다.");
         }
+
+        commentRepository.deleteByBoard(board);
+
+        likeRepository.deleteByBoard(board);
 
         // Elasticsearch에서 해당 게시글 삭제
         boardSearchRepository.deleteByDocumentId(postId);
