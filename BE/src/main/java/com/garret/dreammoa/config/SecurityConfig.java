@@ -112,8 +112,11 @@ public class SecurityConfig {
                                 .requestMatchers(HttpMethod.GET, "api/likes/**").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/challenges/popular", "/challenges/search", "/challenges/all-challenges").permitAll()
                                 //                        .requestMatchers("api/likes/**").authenticated()
-                                .requestMatchers("/random-determinations","/login","/", "/error", "/refresh", "/top-viewed", "/openvidu/**", "/join","/email-find","/pw-find","/openvidu/**",
-                                        "/send-verification-code", "/verify-email-code", "/check-email", "/check-nickname", "/tags", "/user-tags")
+                                .requestMatchers("/random-determinations","/ending-soon",
+                                        "/total-screen-time", "/login","/", "/error", "/refresh", "/top-viewed", "/openvidu/**", "/join","/email-find","/pw-find","/openvidu/**",
+                                        "/send-verification-code", "/verify-email-code", "/check-email", "/check-nickname",
+                                        "/challenges/*/info",
+                                        "/tags", "/user-tags")
                                 .permitAll()
                                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                                 .requestMatchers("/files/**").permitAll()

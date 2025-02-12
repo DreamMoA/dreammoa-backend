@@ -1,18 +1,20 @@
 package com.garret.dreammoa.domain.controller;
 
 import com.garret.dreammoa.domain.dto.board.responsedto.MainBoardResponseDto;
+import com.garret.dreammoa.domain.dto.challenge.responsedto.EndingSoonChallengeDto;
+import com.garret.dreammoa.domain.dto.main.response.TotalScreenTimeResponseDto;
 import com.garret.dreammoa.domain.model.BoardEntity;
 import com.garret.dreammoa.domain.repository.BoardRepository;
 import com.garret.dreammoa.domain.repository.UserRepository;
+import com.garret.dreammoa.domain.service.TotalScreenTimeService;
+import com.garret.dreammoa.domain.service.challenge.ChallengeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Collection;
@@ -26,21 +28,15 @@ import java.util.stream.Collectors;
 public class MainController {
     private final BoardRepository boardRepository;
     private final UserRepository userRepository;
+    private final TotalScreenTimeService totalScreenTimeService;
+    private final ChallengeService challengeService;
 
 
-    @GetMapping("/")
-    public String mainP(){
-
-        String name = SecurityContextHolder.getContext().getAuthentication().getName();
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
-        Iterator<? extends GrantedAuthority> iter = authorities.iterator();
-        GrantedAuthority auth= iter.next();
-        String role = auth.getAuthority();
-
-        return "main Controller : " + name + ",  " + role;
-    }
+    @GetMapping("/total-screen-time")
+   public ResponseEntity<TotalScreenTimeResponseDto> getTotalScreenTime(){
+        TotalScreenTimeResponseDto responseDto = totalScreenTimeService.getTotalScreenTimeDto();
+        return ResponseEntity.ok(responseDto);
+   }
 
     @GetMapping("/top-viewed")
     public ResponseEntity<List<MainBoardResponseDto>> getTopViewedPosts() {
@@ -75,6 +71,12 @@ public class MainController {
     public ResponseEntity<List<String>> getRandomDeterminations() {
         List<String> determinations = userRepository.findRandomDeterminations();
         return ResponseEntity.ok(determinations);
+    }
+
+    @GetMapping("/ending-soon")
+    public ResponseEntity<List<EndingSoonChallengeDto>> getEndingSoonChallenges() {
+        List<EndingSoonChallengeDto> dtos = challengeService.getEndingSoonChallenges();
+        return ResponseEntity.ok(dtos);
     }
 
 }

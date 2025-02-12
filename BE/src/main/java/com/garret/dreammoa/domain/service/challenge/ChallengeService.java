@@ -2,6 +2,7 @@ package com.garret.dreammoa.domain.service.challenge;
 
 import com.garret.dreammoa.domain.dto.challenge.requestdto.*;
 import com.garret.dreammoa.domain.dto.challenge.responsedto.ChallengeResponse;
+import com.garret.dreammoa.domain.dto.challenge.responsedto.EndingSoonChallengeDto;
 import com.garret.dreammoa.domain.dto.challenge.responsedto.MyChallengeResponseDto;
 import com.garret.dreammoa.domain.dto.challenge.responsedto.PagedChallengeResponseDto;
 import com.garret.dreammoa.domain.dto.challenge.responsedto.SearchChallengeResponseDto;
@@ -13,12 +14,15 @@ import com.garret.dreammoa.utils.SecurityUtil;
 import io.openvidu.java.client.OpenViduHttpException;
 import io.openvidu.java.client.OpenViduJavaClientException;
 import lombok.RequiredArgsConstructor;
+import com.garret.dreammoa.domain.model.FileEntity;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -28,6 +32,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.time.Duration;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -128,12 +134,19 @@ public class ChallengeService {
     public ResponseEntity<ChallengeResponse> getChallengeInfo(Long challengeId) {
         ChallengeEntity challenge = challengeRepository.findById(challengeId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 챌린지를 찾을 수 없습니다."));
-        UserEntity user = securityUtil.getCurrentUser();
-
-        participantHistoryService.validateNotKicked(challenge, user);
-
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        // 썸네일 확인
         List<FileEntity> files = fileService.getFiles(challenge.getChallengeId(), FileEntity.RelatedType.CHALLENGE);
         String thumbnail = (files != null && !files.isEmpty()) ? files.get(0).getFileUrl() : null;
+
+        System.out.println("authentication = " + authentication);
+        System.out.println("authentication.isAuthenticated() = " + authentication.isAuthenticated());
+
+        if (authentication == null || !authentication.isAuthenticated()||authentication instanceof AnonymousAuthenticationToken)
+            return ResponseEntity.ok(ChallengeResponse.fromEntity(thumbnail, challenge, "참여하려면 로그인이 필요합니다."));
+        UserEntity user = securityUtil.getCurrentUser();
+        participantHistoryService.validateNotKicked(challenge, user); //강퇴 이력 조회
+        // 참가 이력 조회
         boolean isParticipant = participantService.existsByChallengeAndUser(challenge, user);
         if (isParticipant) {
             // 이미 참가 중이면 엔터 챌린지 가능 정보를 제공
@@ -397,6 +410,27 @@ public class ChallengeService {
                 .tags(tagNames)
                 .thumbnail(thumbnailUrl)
                 .build();
+    }
+
+    public List<EndingSoonChallengeDto> getEndingSoonChallenges() {
+        LocalDateTime now = LocalDateTime.now();
+        List<ChallengeEntity> challenges = challengeRepository.findTop20ByStartDateAfterOrderByStartDateAsc(now);
+
+        return challenges.stream().map(challenge -> {
+            // 남은 일수 계산 (소수점 이하는 버림)
+            long remainingDays = Duration.between(now, challenge.getStartDate()).toDays();
+
+            // 해당 챌린지의 썸네일 조회
+            List<FileEntity> files = fileService.getFiles(challenge.getChallengeId(), FileEntity.RelatedType.CHALLENGE);
+            String thumbnail = (files != null && !files.isEmpty()) ? files.get(0).getFileUrl() : null;
+
+            return EndingSoonChallengeDto.builder()
+                    .challengeId(challenge.getChallengeId())
+                    .title(challenge.getTitle())
+                    .thumbnail(thumbnail)
+                    .remainingDays(remainingDays)
+                    .build();
+        }).collect(Collectors.toList());
     }
     // ✅ Page 객체를 JSON으로 변환해주는 메서드
     private PagedChallengeResponseDto<MyChallengeResponseDto> toPagedResponse(Page<ChallengeEntity> page, List<MyChallengeResponseDto> list) {

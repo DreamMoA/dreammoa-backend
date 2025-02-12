@@ -2,7 +2,6 @@ package com.garret.dreammoa.domain.repository;
 
 import com.garret.dreammoa.domain.model.ChallengeEntity;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -11,10 +10,10 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface ChallengeRepository extends JpaRepository<ChallengeEntity,Long> {
+    List<ChallengeEntity> findTop20ByStartDateAfterOrderByStartDateAsc(LocalDateTime now);
     @Query("SELECT c FROM ChallengeEntity c " +
             "JOIN c.challengeTags ct " +
             "JOIN ct.tag t " + // tag 객체와 조인
