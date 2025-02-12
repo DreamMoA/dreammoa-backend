@@ -1,5 +1,4 @@
 package com.garret.dreammoa.domain.controller.challenge;
-
 import com.garret.dreammoa.domain.dto.challenge.requestdto.*;
 import com.garret.dreammoa.domain.dto.challenge.responsedto.ChallengeResponse;
 import com.garret.dreammoa.domain.dto.challenge.responsedto.MyChallengeResponseDto;
@@ -79,6 +78,16 @@ public class ChallengeController {
     public ResponseEntity<List<MyChallengeResponseDto>> getMyChallenges() {
         List<MyChallengeResponseDto> myChallenges = challengeService.getMyChallenges();
         return ResponseEntity.ok(myChallenges);
+    }
+
+    @GetMapping("/invite/{challengeId}")
+    public ResponseEntity<String> generateChallengeInviteUrl(@PathVariable Long challengeId) throws Exception {
+        return ResponseEntity.ok(challengeService.generateInviteUrl(challengeId));
+    }
+
+    @GetMapping("/invite/accept")
+    public ResponseEntity<?> acceptInvite(@RequestParam("encryptedId") String encodedId) throws Exception {
+        return challengeService.acceptInvite(encodedId);
     }
 
     @GetMapping("/tag-challenges")

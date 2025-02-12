@@ -18,7 +18,7 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     Optional<UserEntity> findByNicknameAndName(String nickname, String name);
     @Query(value = "SELECT determination FROM tb_user " +
             "WHERE determination IS NOT NULL AND TRIM(determination) <> '' " +
-            "ORDER BY RAND() LIMIT 5", nativeQuery = true)
+            "ORDER BY RAND() LIMIT 7", nativeQuery = true)
     List<String> findRandomDeterminations();
 
 }
