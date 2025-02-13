@@ -1,5 +1,7 @@
 package com.garret.dreammoa.domain.service;
 
+import com.garret.dreammoa.domain.dto.dashboard.request.UpdateDeterminationRequest;
+import com.garret.dreammoa.domain.dto.dashboard.response.DeterminationResponse;
 import com.garret.dreammoa.domain.dto.user.request.JoinRequest;
 import com.garret.dreammoa.domain.dto.user.request.UpdateProfileRequest;
 import com.garret.dreammoa.domain.dto.user.response.UserResponse;
@@ -134,7 +136,8 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
         // 사용자 ID로 프로필 URL 가져오기
-        Optional<FileEntity> profilePicture = fileRepository.findByRelatedIdAndRelatedType(userId, FileEntity.RelatedType.PROFILE)
+//        fileRepository.findByRelatedIdAndRelatedType(userId, FileEntity.RelatedType.PROFILE)
+        Optional<FileEntity> profilePicture = fileService.getByRelatedIdAndRelatedType(userId, FileEntity.RelatedType.PROFILE)
                 .stream().findFirst();
         String profileUrl = profilePicture.map(FileEntity::getFileUrl).orElse(null);
 
@@ -303,5 +306,29 @@ public class UserService {
 
         // DB의 사용자 정보를 기반으로 UserResponse DTO 생성 및 반환 (id와 role 추가)
         return new UserResponse(user.getId(), user.getEmail(), user.getName(), user.getNickname(), profileUrl, user.getRole().name());
+    }
+
+    // 사용자 각오 수정
+    @Transactional
+    public void updateDetermination(String accessToken, UpdateDeterminationRequest request) {
+        if (!jwtUtil.validateToken(accessToken)) {
+            throw new RuntimeException("유효하지 않은 Access Token입니다.");
+        }
+        Long userId = jwtUtil.getUserIdFromToken(accessToken);
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+        user.setDetermination(request.getDetermination());
+        userRepository.save(user);
+    }
+
+    // 사용자 각오 조회
+    public DeterminationResponse getDetermination(String accessToken) {
+        if (!jwtUtil.validateToken(accessToken)) {
+            throw new RuntimeException("유효하지 않은 Access Token입니다.");
+        }
+        Long userId = jwtUtil.getUserIdFromToken(accessToken);
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+        return new DeterminationResponse(user.getDetermination());
     }
 }

@@ -4,7 +4,10 @@ import com.garret.dreammoa.domain.dto.dashboard.request.StudyHistoryDto;
 import com.garret.dreammoa.domain.dto.dashboard.request.UpdateDeterminationRequest;
 import com.garret.dreammoa.domain.dto.dashboard.response.*;
 import com.garret.dreammoa.domain.service.DashboardService;
+import com.garret.dreammoa.domain.service.UserService;
+import com.garret.dreammoa.domain.service.challenge.ChallengeService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,21 +19,19 @@ import com.garret.dreammoa.domain.dto.dashboard.request.*;
 public class DashboardController {
 
     private final DashboardService dashboardService;
+    private final UserService userService;
+    private final ChallengeService challengeService;
 
     /**
      * 월별 공부 히스토리 조회
      * 예: GET /dashboard/history?year=2023&month=1
      */
     @GetMapping("/history")
-    public List<StudyHistoryDto> getMonthlyStudyHistory(
-            @RequestHeader("Authorization") String accessToken,
+    public ResponseEntity<List<DashboardChallengeDto>> getStudyRanking(
             @RequestParam int year,
             @RequestParam int month) {
-        // "Bearer " 접두어 제거
-        if (accessToken.startsWith("Bearer ")) {
-            accessToken = accessToken.substring(7);
-        }
-        return dashboardService.getMonthlyStudyHistory(accessToken, year, month);
+        List<DashboardChallengeDto> ranking = challengeService.getMonthlyStudyRanking(year, month);
+        return ResponseEntity.ok(ranking);
     }
 
     /**
@@ -42,7 +43,7 @@ public class DashboardController {
         if (accessToken.startsWith("Bearer ")) {
             accessToken = accessToken.substring(7);
         }
-        return dashboardService.getDetermination(accessToken);
+        return userService.getDetermination(accessToken);
     }
 
     /**
@@ -56,7 +57,7 @@ public class DashboardController {
         if (accessToken.startsWith("Bearer ")) {
             accessToken = accessToken.substring(7);
         }
-        dashboardService.updateDetermination(accessToken, request);
+        userService.updateDetermination(accessToken, request);
     }
 
 
