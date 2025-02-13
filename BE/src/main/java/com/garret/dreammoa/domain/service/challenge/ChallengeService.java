@@ -146,7 +146,7 @@ public class ChallengeService {
         System.out.println("authentication = " + authentication);
         System.out.println("authentication.isAuthenticated() = " + authentication.isAuthenticated());
 
-        if (authentication == null || !authentication.isAuthenticated() || authentication instanceof AnonymousAuthenticationToken)
+        if (!authentication.isAuthenticated() || authentication instanceof AnonymousAuthenticationToken)
             return ResponseEntity.ok(ChallengeResponse.fromEntity(thumbnail, challenge, "참여하려면 로그인이 필요합니다."));
         UserEntity user = securityUtil.getCurrentUser();
         participantHistoryService.validateNotKicked(challenge, user); //강퇴 이력 조회
@@ -203,8 +203,10 @@ public class ChallengeService {
         String sessionId = openViduService.getOrCreateSession(challengeId.toString());
 
         // ✅ 세션 ID를 챌린지에 저장
-        challenge.setSessionId(sessionId);
-        challengeRepository.save(challenge);
+        if(Objects.isNull(challenge.getSessionId())){
+            challenge.setSessionId(sessionId);
+            challengeRepository.save(challenge);
+        }
 
         // ✅ 연결 토큰 생성
         String token = openViduService.createConnection(sessionId, Map.of());

@@ -15,6 +15,7 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -26,18 +27,24 @@ import java.util.Map;
 @Configuration
 public class ElasticsearchConfig {
 
+    @Value("${elastic.host}")
+    String host;
+
+    @Value("${elastic.username}")
+    String username;
+
+    @Value("${elastic.password}")
+    String password;
     @Bean
     public ElasticsearchClient elasticsearchClient(){
         // 인증 정보 설정 (Elasticsearch 8.x에서는 보안 인증 필요)
-        final String username = "elastic";
-        final String password = "sso9256";
 
         // 인증 정보 설정 (Elasticsearch 8.x에서는 보안 인증 필요)
         BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
         credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(username, password));
 
         // RestClient 생성
-        RestClientBuilder builder = RestClient.builder(new HttpHost("localhost", 9200, "http"))
+        RestClientBuilder builder = RestClient.builder(new HttpHost(host, 9200, "http"))
                 .setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider));
 
         RestClient restClient = builder.build();
