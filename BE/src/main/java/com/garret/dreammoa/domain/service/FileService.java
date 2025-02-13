@@ -17,10 +17,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Base64;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 
 @Service
@@ -208,5 +205,7 @@ public class FileService {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         return uuid + "_" + timestamp;
     }
-
+    public List<FileEntity> getByRelatedIdAndRelatedType(Long userId, RelatedType relatedType) {
+        return fileRepository.findByRelatedIdAndRelatedType(userId, relatedType);
+    }
 }

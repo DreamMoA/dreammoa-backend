@@ -2,11 +2,14 @@ package com.garret.dreammoa.domain.service.challenge;
 
 import com.garret.dreammoa.domain.dto.challenge.requestdto.*;
 import com.garret.dreammoa.domain.dto.challenge.responsedto.*;
+import com.garret.dreammoa.domain.dto.dashboard.request.StudyHistoryDto;
+import com.garret.dreammoa.domain.dto.dashboard.response.DashboardChallengeDto;
 import com.garret.dreammoa.domain.model.*;
 import com.garret.dreammoa.domain.repository.*;
 import com.garret.dreammoa.domain.service.FileService;
 import com.garret.dreammoa.domain.service.tag.TagServiceImpl;
 import com.garret.dreammoa.utils.EncryptionUtil;
+import com.garret.dreammoa.utils.JwtUtil;
 import com.garret.dreammoa.utils.SecurityUtil;
 import io.openvidu.java.client.OpenViduHttpException;
 import io.openvidu.java.client.OpenViduJavaClientException;
@@ -24,12 +27,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -48,6 +49,10 @@ public class ChallengeService {
     private final ChallengeLogService challengeLogService;
     private final EncryptionUtil encryptionUtil;
     private final ChallengeTagService challengeTagService;
+    private final JwtUtil jwtUtil;
+    private final ChallengeLogRepository challengeLogRepository;
+    private final FileRepository fileRepository;
+
 
     @Transactional
     public ResponseEntity<ChallengeResponse> createChallenge(
@@ -141,7 +146,7 @@ public class ChallengeService {
         System.out.println("authentication = " + authentication);
         System.out.println("authentication.isAuthenticated() = " + authentication.isAuthenticated());
 
-        if (authentication == null || !authentication.isAuthenticated()||authentication instanceof AnonymousAuthenticationToken)
+        if (authentication == null || !authentication.isAuthenticated() || authentication instanceof AnonymousAuthenticationToken)
             return ResponseEntity.ok(ChallengeResponse.fromEntity(thumbnail, challenge, "참여하려면 로그인이 필요합니다."));
         UserEntity user = securityUtil.getCurrentUser();
         participantHistoryService.validateNotKicked(challenge, user); //강퇴 이력 조회
@@ -306,6 +311,43 @@ public class ChallengeService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 월별 공부 히스토리 조회
+     * JWT 토큰에서 사용자 ID를 추출한 후,
+     * 지정한 연도와 월의 시작일~종료일 사이의 기록을 조회합니다.
+     */
+    public List<StudyHistoryDto> getMonthlyStudyHistory(String accessToken, int year, int month) {
+        if (!jwtUtil.validateToken(accessToken)) {
+            throw new RuntimeException("유효하지 않은 Access Token입니다.");
+        }
+        Long userId = jwtUtil.getUserIdFromToken(accessToken);
+        LocalDate startDate = LocalDate.of(year, month, 1);
+        LocalDate endDate = startDate.with(TemporalAdjusters.lastDayOfMonth());
+
+        List<ChallengeLogEntity> logs = challengeLogRepository.findByUser_IdAndRecordAtBetween(userId, startDate, endDate);
+
+        return logs.stream().map(log -> {
+            Long challengeId = log.getChallenge().getChallengeId();
+            String challengeTitle = log.getChallenge().getTitle();
+
+            // 챌린지 썸네일 조회
+            Optional<FileEntity> thumbnailFile = fileRepository.findByRelatedIdAndRelatedType(challengeId, FileEntity.RelatedType.CHALLENGE)
+                    .stream().findFirst();
+            String thumbnailUrl = thumbnailFile.map(FileEntity::getFileUrl).orElse(null);
+
+            return StudyHistoryDto.builder()
+                    .challengeLogId(log.getId())
+                    .challengeId(challengeId)
+                    .challengeTitle(challengeTitle)
+                    .recordAt(log.getRecordAt())
+                    .pureStudyTime(log.getPureStudyTime())
+                    .screenTime(log.getScreenTime())
+                    .isSuccess(log.getIsSuccess())
+                    .thumbnailUrl(thumbnailUrl) // 챌린지 썸네일 추가
+                    .build();
+        }).collect(Collectors.toList());
+    }
+
     public List<EndingSoonChallengeDto> getEndingSoonChallenges() {
         LocalDateTime now = LocalDateTime.now();
         List<ChallengeEntity> challenges = challengeRepository.findTop20ByStartDateAfterOrderByStartDateAsc(now);
@@ -327,13 +369,13 @@ public class ChallengeService {
         }).collect(Collectors.toList());
     }
 
-   public ChallengeEntity getChallengeById(Long challengeId){
+    public ChallengeEntity getChallengeById(Long challengeId) {
         return challengeRepository.findById(challengeId).orElse(null);
-   }
+    }
 
-   public String generateInviteUrl(Long challengeId) throws Exception {
+    public String generateInviteUrl(Long challengeId) throws Exception {
         ChallengeEntity challenge = getChallengeById(challengeId);
-        if(challenge == null){
+        if (challenge == null) {
             throw new IllegalArgumentException("해당 첼린지를 찾을 수 없습니다.");
         }
 
@@ -341,23 +383,23 @@ public class ChallengeService {
         String encryptedId = encryptionUtil.encrypt(String.valueOf(challengeId));
         String encodedId = Base64.getUrlEncoder().encodeToString(encryptedId.getBytes());
 
-       return "http://localhost:5173/challenges/invite/accept?encryptedId=" + encodedId;
+        return "http://localhost:5173/challenges/invite/accept?encryptedId=" + encodedId;
 
-   }
+    }
 
-   
-   // 초대 URL 수락 -> 첼린지 상세조회
-   public ResponseEntity<?> acceptInvite(String encodedId) throws Exception {
 
-       // 1. Base64 디코딩 후 체린지 ID 문자열 추출
-       String encryptedId = new String(Base64.getUrlDecoder().decode(encodedId));
+    // 초대 URL 수락 -> 첼린지 상세조회
+    public ResponseEntity<?> acceptInvite(String encodedId) throws Exception {
 
-       // 2. 복호화를 통해 원래 첼린지 ID 문자열 추출
-       String challengeIdStr = encryptionUtil.decrypt(encryptedId);
-       Long challengeId = Long.parseLong(challengeIdStr);
+        // 1. Base64 디코딩 후 체린지 ID 문자열 추출
+        String encryptedId = new String(Base64.getUrlDecoder().decode(encodedId));
 
-       // 3. 추출한 챌린지 ID로 기존 상세 조회 호출
-       return getChallengeInfo(challengeId);
+        // 2. 복호화를 통해 원래 첼린지 ID 문자열 추출
+        String challengeIdStr = encryptionUtil.decrypt(encryptedId);
+        Long challengeId = Long.parseLong(challengeIdStr);
+
+        // 3. 추출한 챌린지 ID로 기존 상세 조회 호출
+        return getChallengeInfo(challengeId);
     }
 
     public ResponseEntity<List<MyChallengeResponseDto>> getTagChallenges(String tags) {
@@ -477,5 +519,63 @@ public class ChallengeService {
                 .build();
     }
 
+
+    public List<DashboardChallengeDto> getMonthlyStudyRanking(int year, int month) {
+        // 현재 로그인한 사용자 조회
+        var currentUser = securityUtil.getCurrentUser();
+
+        // 입력한 연/월에 해당하는 시작일과 종료일 계산
+        LocalDate startDate = LocalDate.of(year, month, 1);
+        LocalDate endDate = startDate.with(TemporalAdjusters.lastDayOfMonth());
+
+        // 사용자가 참여한 챌린지 목록 조회 (참여 내역)
+        List<ParticipantEntity> participations = participantService.findByUser(currentUser);
+
+        List<DashboardChallengeDto> dashboardList = new ArrayList<>();
+
+        // 각 참여 챌린지마다 해당 월에 기록된 학습 로그를 집계
+        for (ParticipantEntity participation : participations) {
+            ChallengeEntity challenge = participation.getChallenge();
+            Long challengeId = challenge.getChallengeId();
+
+            // 해당 챌린지에 대한 학습 로그 (현재 사용자, 지정 기간)
+            List<ChallengeLogEntity> logs = challengeLogRepository
+                    .findByUser_IdAndChallenge_ChallengeIdAndRecordAtBetween(
+                            currentUser.getId(), challengeId, startDate, endDate);
+
+            int totalScreenTime = logs.stream()
+                    .mapToInt(log -> log.getScreenTime() != null ? log.getScreenTime() : 0)
+                    .sum();
+            int totalPureStudyTime = logs.stream()
+                    .mapToInt(log -> log.getPureStudyTime() != null ? log.getPureStudyTime() : 0)
+                    .sum();
+
+            // 챌린지 썸네일 조회
+            List<FileEntity> files = fileService.getFiles(challengeId, FileEntity.RelatedType.CHALLENGE);
+            String thumbnailUrl = (files != null && !files.isEmpty()) ? files.get(0).getFileUrl() : null;
+
+            DashboardChallengeDto dto = DashboardChallengeDto.builder()
+                    .challengeId(challengeId)
+                    .title(challenge.getTitle())
+                    .thumbnailUrl(thumbnailUrl)
+                    .totalScreenTime(totalScreenTime)
+                    .totalPureStudyTime(totalPureStudyTime)
+                    .build();
+
+            dashboardList.add(dto);
+        }
+
+        // 총 화면 켠 시간 기준 내림차순 정렬
+        dashboardList.sort(Comparator.comparing(DashboardChallengeDto::getTotalScreenTime).reversed());
+
+        // 상위 4개만 반환 (리스트 크기가 4 이상인 경우에만)
+        if (dashboardList.size() > 4) {
+            dashboardList = dashboardList.subList(0, 4);
+        }
+
+        return dashboardList;
+    }
 }
+
+
 
