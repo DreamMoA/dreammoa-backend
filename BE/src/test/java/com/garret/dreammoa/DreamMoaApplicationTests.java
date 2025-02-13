@@ -9,5 +9,4 @@ class DreamMoaApplicationTests {
 	@Test
 	void contextLoads() {
 	}
-
 }

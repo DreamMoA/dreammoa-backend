@@ -302,23 +302,7 @@ public class ChallengeService {
         //각 참여 내역에서 챌린지 정보를 추출하여 DTO로 변환
         return participations.stream()
                 .map(ParticipantEntity::getChallenge)
-                .map(challenge -> {
-                    // 챌린지에 달린 태그명 리스트 생성
-                    List<String> tagNames = challenge.getChallengeTags().stream()
-                            .map(challengeTag -> challengeTag.getTag().getTagName())
-                            .collect(Collectors.toList());
-
-                    // DTO 생성
-                    return MyChallengeResponseDto.builder()
-                            .challengeId(challenge.getChallengeId())
-                            .title(challenge.getTitle())
-                            .description(challenge.getDescription())
-                            .startDate(challenge.getStartDate())
-                            .expireDate(challenge.getExpireDate())
-                            .isActive(challenge.getIsActive())
-                            .tags(tagNames)
-                            .build();
-                })
+                .map(this::toResponseDto)
                 .collect(Collectors.toList());
     }
 
