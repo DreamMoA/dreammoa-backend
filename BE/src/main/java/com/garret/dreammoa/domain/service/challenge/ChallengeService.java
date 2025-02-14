@@ -56,9 +56,7 @@ public class ChallengeService {
 
 
     @Transactional
-    public ResponseEntity<ChallengeResponse> createChallenge(
-            ChallengeCreateRequest request,
-            MultipartFile thumbnail) throws Exception {
+    public ResponseEntity<ChallengeResponse> createChallenge(ChallengeCreateRequest request, MultipartFile thumbnail) throws Exception {
         UserEntity user = securityUtil.getCurrentUser();
         log.info("현재 유저: {}", user.getName());
 
@@ -90,12 +88,11 @@ public class ChallengeService {
 
         // 사진 처리
         // 썸네일 처리: null 기본 이미지 설정
-        if (thumbnail != null && !thumbnail.isEmpty()) {
+        if (Objects.nonNull(thumbnail) && !thumbnail.isEmpty()) {
             log.info("파일 업로드 중: {}", thumbnail.getOriginalFilename());
             String thumbnailURL = fileService.saveFile(thumbnail, challengeId, FileEntity.RelatedType.CHALLENGE).getFileUrl(); // 실제 파일 저장
             return ResponseEntity.ok(ChallengeResponse.fromEntity(thumbnailURL, challenge, "챌린지가 성공적으로 생성되었습니다."));
         } else {
-            log.info("썸네일이 없으므로 기본 이미지 사용");
             return ResponseEntity.ok(ChallengeResponse.fromEntity(challenge, "챌린지가 성공적으로 생성되었습니다."));
         }
     }
@@ -118,10 +115,8 @@ public class ChallengeService {
 
         // 태그 업데이트
         tagService.updateTags(challenge, request.getTags());
-//        challengeRepository.save(challenge); 필요 없음!
-        System.out.println("thumbnail = " + thumbnail);
 
-        if (thumbnail != null && !thumbnail.isEmpty()) {
+        if (Objects.nonNull(thumbnail) && !thumbnail.isEmpty()) {
             FileEntity file = fileService.updateFile(thumbnail, challengeId, FileEntity.RelatedType.CHALLENGE);
             String newThumbnail = file.getFileUrl();
             return ResponseEntity.ok(ChallengeResponse.fromEntity(newThumbnail, challenge, "챌린지가 성공적으로 수정되었습니다."));
@@ -136,29 +131,29 @@ public class ChallengeService {
      * @return MyChallengeDetailResponseDto
      * @throws IllegalArgumentException 사용자가 해당 챌린지에 참여 중이 아닐 경우
      */
-    public ResponseEntity<ChallengeResponse> getChallengeInfo(Long challengeId) {
+    public ResponseEntity<ChallengeInfoResponseDto> getChallengeInfo(Long challengeId) {
         ChallengeEntity challenge = challengeRepository.findById(challengeId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 챌린지를 찾을 수 없습니다."));
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         // 썸네일 확인
         List<FileEntity> files = fileService.getFiles(challenge.getChallengeId(), FileEntity.RelatedType.CHALLENGE);
-        String thumbnail = (files != null && !files.isEmpty()) ? files.get(0).getFileUrl() : null;
+        String thumbnail = (!files.isEmpty()) ? files.get(0).getFileUrl() : null;
 
-        System.out.println("authentication = " + authentication);
-        System.out.println("authentication.isAuthenticated() = " + authentication.isAuthenticated());
-
-        if (authentication == null || !authentication.isAuthenticated() || authentication instanceof AnonymousAuthenticationToken)
-            return ResponseEntity.ok(ChallengeResponse.fromEntity(thumbnail, challenge, "참여하려면 로그인이 필요합니다."));
+        if (!authentication.isAuthenticated() || authentication instanceof AnonymousAuthenticationToken)
+            return ResponseEntity.ok(toResponseDto(challenge, "로그인하세요"));
         UserEntity user = securityUtil.getCurrentUser();
         participantHistoryService.validateNotKicked(challenge, user); //강퇴 이력 조회
+
         // 참가 이력 조회
-        boolean isParticipant = participantService.existsByChallengeAndUser(challenge, user);
+        Boolean isParticipant = participantService.existsByChallengeAndUser(challenge, user);
         if (isParticipant) {
             // 이미 참가 중이면 엔터 챌린지 가능 정보를 제공
-            return ResponseEntity.ok(ChallengeResponse.fromEntity(thumbnail, challenge, "이미 참가 중입니다. 엔터챌린지 가능합니다."));
+            return ResponseEntity.ok(toResponseDto(challenge, "입장"));
+//            return ResponseEntity.ok(ChallengeResponse.fromEntity(thumbnail, challenge, "이미 참가 중입니다. 엔터챌린지 가능합니다."));
         } else {
+            return ResponseEntity.ok(toResponseDto(challenge, "참가"));
             // 참가 중이 아니면 조인 챌린지 가능 정보를 제공
-            return ResponseEntity.ok(ChallengeResponse.fromEntity(thumbnail, challenge, "아직 참가하지 않았습니다. 조인챌린지 가능합니다."));
+//            return ResponseEntity.ok(ChallengeResponse.fromEntity(thumbnail, challenge, "아직 참가하지 않았습니다. 조인챌린지 가능합니다."));
         }
     }
 
@@ -204,8 +199,11 @@ public class ChallengeService {
         String sessionId = openViduService.getOrCreateSession(challengeId.toString());
 
         // ✅ 세션 ID를 챌린지에 저장
-        challenge.setSessionId(sessionId);
-        challengeRepository.save(challenge);
+        if(Objects.isNull(challenge.getSessionId())){
+            challenge.setSessionId(sessionId);
+            challenge.setIsActive(true);
+            challengeRepository.save(challenge);
+        }
 
         // ✅ 연결 토큰 생성
         String token = openViduService.createConnection(sessionId, Map.of());
@@ -241,6 +239,7 @@ public class ChallengeService {
             // ✅ 참가자가 없으면 세션 종료
             openViduService.closeSession(challenge.getSessionId());
             challenge.setSessionId(null); // 세션 ID 제거
+            challenge.setIsActive(false);
             challengeRepository.save(challenge);
         }
         return ResponseEntity.ok(ChallengeResponse.responseMessage("챌린지 세션에서 정상적으로 나갔습니다."));
@@ -493,7 +492,6 @@ public class ChallengeService {
                 .stream()
                 .map(challengeTag -> challengeTag.getTag().getTagName())
                 .collect(Collectors.toList());
-
         List<FileEntity> files = fileService.getFiles(challenge.getChallengeId(), FileEntity.RelatedType.CHALLENGE);
         String thumbnailUrl = files.isEmpty() ? null : files.get(0).getFileUrl();
 
@@ -505,7 +503,31 @@ public class ChallengeService {
                 .expireDate(challenge.getExpireDate())
                 .isActive(challenge.getIsActive())
                 .tags(tagNames)
+                .currentParticipants(challenge.getChallengeParticipants().size())
+                .maxParticipants(challenge.getMaxParticipants())
                 .thumbnail(thumbnailUrl)
+                .build();
+    }
+    private ChallengeInfoResponseDto toResponseDto(ChallengeEntity challenge, String message) {
+        List<String> tagNames = Optional.ofNullable(challenge.getChallengeTags())
+                .orElse(Collections.emptyList()) // ✅ 태그 리스트가 없으면 빈 리스트 반환
+                .stream()
+                .map(challengeTag -> challengeTag.getTag().getTagName())
+                .collect(Collectors.toList());
+        List<FileEntity> files = fileService.getFiles(challenge.getChallengeId(), FileEntity.RelatedType.CHALLENGE);
+        String thumbnailUrl = files.isEmpty() ? null : files.get(0).getFileUrl();
+        return ChallengeInfoResponseDto.builder()
+                .challengeId(challenge.getChallengeId())
+                .title(challenge.getTitle())
+                .description(challenge.getDescription())
+                .startDate(challenge.getStartDate())
+                .expireDate(challenge.getExpireDate())
+                .isActive(challenge.getIsActive())
+                .tags(tagNames)
+                .thumbnail(thumbnailUrl)
+                .currentParticipants(challenge.getChallengeParticipants().size())
+                .maxParticipants(challenge.getMaxParticipants())
+                .message(message)
                 .build();
     }
 

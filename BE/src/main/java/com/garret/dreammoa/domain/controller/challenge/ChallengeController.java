@@ -38,7 +38,7 @@ public class ChallengeController {
     }
 
     @GetMapping("/{challengeId}/info")
-    public ResponseEntity<ChallengeResponse> getChallengeInfo(@PathVariable Long challengeId) {
+    public ResponseEntity<ChallengeInfoResponseDto> getChallengeInfo(@PathVariable Long challengeId) {
         return challengeService.getChallengeInfo(challengeId);
     }
 
