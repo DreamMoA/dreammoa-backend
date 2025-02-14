@@ -1,6 +1,5 @@
 package com.garret.dreammoa.domain.dto.challenge.responsedto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Data;
 
@@ -9,16 +8,16 @@ import java.util.List;
 
 @Data
 @Builder
-public class MyChallengeResponseDto {
+public class ChallengeInfoResponseDto {
     private Long challengeId;
     private String title;
     private String description;
-    private LocalDateTime startDate;
-    private LocalDateTime expireDate;
     private Integer currentParticipants;
     private Integer maxParticipants;
-    @JsonProperty("isActive")
+    private LocalDateTime startDate;
+    private LocalDateTime expireDate;
     private Boolean isActive;
     private List<String> tags;
     private String thumbnail;
+    private String message;
 }
