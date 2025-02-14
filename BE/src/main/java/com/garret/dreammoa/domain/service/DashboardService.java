@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -157,6 +158,38 @@ public class DashboardService {
                 .totalPureStudyTime(totalPureStudyTime)
                 .totalScreenTime(totalScreenTime)
                 .build();
+    }
+
+    public List<DailyStudyTimeDto> getDailyStudyTimeForMonth(String accessToken, int year, int month) {
+        if (!jwtUtil.validateToken(accessToken)) {
+            throw new RuntimeException("유효하지 않은 Access Token입니다.");
+        }
+        Long userId = jwtUtil.getUserIdFromToken(accessToken);
+        LocalDate startDate = LocalDate.of(year, month, 1);
+        LocalDate endDate = startDate.with(TemporalAdjusters.lastDayOfMonth());
+
+        // 해당 월의 학습 로그를 모두 조회
+        List<ChallengeLogEntity> logs = challengeLogRepository.findByUser_IdAndRecordAtBetween(userId, startDate, endDate);
+
+        // 날짜별로 그룹핑하고 각 날짜의 총 공부 시간 계산
+        Map<LocalDate, Integer> dailyTotals = logs.stream()
+                .collect(Collectors.groupingBy(
+                        ChallengeLogEntity::getRecordAt,
+                        Collectors.summingInt(log -> {
+                            int pure = (log.getPureStudyTime() != null) ? log.getPureStudyTime() : 0;
+                            int screen = (log.getScreenTime() != null) ? log.getScreenTime() : 0;
+                            return pure + screen;
+                        })
+                ));
+
+        // 결과를 DTO 리스트로 변환하고 날짜순으로 정렬
+        return dailyTotals.entrySet().stream()
+                .map(entry -> DailyStudyTimeDto.builder()
+                        .recordAt(entry.getKey())
+                        .totalStudyTime(entry.getValue())
+                        .build())
+                .sorted((d1, d2) -> d1.getRecordAt().compareTo(d2.getRecordAt()))
+                .collect(Collectors.toList());
     }
 
 
