@@ -4,6 +4,7 @@ import com.garret.dreammoa.domain.dto.challenge.responsedto.ChallengeResponse;
 import com.garret.dreammoa.domain.dto.challenge.responsedto.MyChallengeResponseDto;
 import com.garret.dreammoa.domain.dto.challenge.responsedto.PagedChallengeResponseDto;
 import com.garret.dreammoa.domain.dto.challenge.responsedto.SearchChallengeResponseDto;
+import com.garret.dreammoa.domain.dto.dashboard.response.ChallengeMonthlyDetailDto;
 import com.garret.dreammoa.domain.service.challenge.ChallengeService;
 import io.openvidu.java.client.OpenViduHttpException;
 import io.openvidu.java.client.OpenViduJavaClientException;
@@ -110,5 +111,7 @@ public class ChallengeController {
             @RequestParam(defaultValue = "0") int page) {
         return challengeService.getAllChallenges(tags, keyword, page);
     }
+
+
 
 }
