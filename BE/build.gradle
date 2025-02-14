@@ -55,6 +55,10 @@ dependencies {
 	implementation 'org.apache.httpcomponents:httpclient:4.5.13'
 	// https://mvnrepository.com/artifact/com.fasterxml.jackson.datatype/jackson-datatype-jsr310
 	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.2'
+	// 구글 API
+	implementation platform('com.google.cloud:libraries-bom:26.33.0')
+	implementation 'com.google.cloud:google-cloud-speech'
+	implementation 'com.google.protobuf:protobuf-java:3.23.4' // ✅ Protobuf 라이브러리 추가
 
 }
 
