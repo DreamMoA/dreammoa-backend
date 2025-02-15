@@ -7,7 +7,8 @@ import com.garret.dreammoa.domain.dto.dashboard.response.ChallengeMonthlyDetailD
 import com.garret.dreammoa.domain.dto.dashboard.response.DashboardChallengeDto;
 import com.garret.dreammoa.domain.model.*;
 import com.garret.dreammoa.domain.repository.*;
-import com.garret.dreammoa.domain.service.FileService;
+import com.garret.dreammoa.domain.service.badge.BadgeService;
+import com.garret.dreammoa.domain.service.file.FileService;
 import com.garret.dreammoa.domain.service.tag.TagServiceImpl;
 import com.garret.dreammoa.utils.EncryptionUtil;
 import com.garret.dreammoa.utils.JwtUtil;
@@ -53,6 +54,7 @@ public class ChallengeService {
     private final JwtUtil jwtUtil;
     private final ChallengeLogRepository challengeLogRepository;
     private final FileRepository fileRepository;
+    private final BadgeService badgeService;
 
 
     @Transactional
@@ -243,6 +245,16 @@ public class ChallengeService {
             challenge.setSessionId(null); // 세션 ID 제거
             challengeRepository.save(challenge);
         }
+
+        // 뱃지 부여 (추가한 로직임)
+        List<ChallengeLogEntity> userLogs = challengeLogRepository.findByUserAndChallenge(user, challenge);
+        long successCount = userLogs.stream().filter(log -> Boolean.TRUE.equals(log.getIsSuccess()))
+                .count();
+        if(successCount >= challenge.getStandard()){
+            // 아직 이 챌린지 벳지를 받지 않았다면 부여
+            badgeService.assignBadgeForChallenge(challenge, user);
+        }
+
         return ResponseEntity.ok(ChallengeResponse.responseMessage("챌린지 세션에서 정상적으로 나갔습니다."));
     }
 

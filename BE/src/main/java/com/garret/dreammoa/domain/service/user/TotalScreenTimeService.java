@@ -1,9 +1,7 @@
-package com.garret.dreammoa.domain.service;
+package com.garret.dreammoa.domain.service.user;
 
 import com.garret.dreammoa.domain.dto.main.response.TotalScreenTimeResponseDto;
 import com.garret.dreammoa.domain.repository.ChallengeLogRepository;
-import com.garret.dreammoa.domain.repository.ChallengeRepository;
-import com.garret.dreammoa.domain.service.challenge.ChallengeLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;

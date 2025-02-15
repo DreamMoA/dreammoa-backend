@@ -2,7 +2,7 @@ package com.garret.dreammoa.domain.controller.badge;
 
 import com.garret.dreammoa.domain.dto.badge.response.BadgeResponseDTO;
 import com.garret.dreammoa.domain.model.BadgeEntity;
-import com.garret.dreammoa.domain.service.BadgeService;
+import com.garret.dreammoa.domain.service.badge.BadgeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

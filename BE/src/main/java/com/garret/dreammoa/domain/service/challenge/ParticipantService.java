@@ -5,7 +5,7 @@ import com.garret.dreammoa.domain.model.ChallengeEntity;
 import com.garret.dreammoa.domain.model.ParticipantEntity;
 import com.garret.dreammoa.domain.model.UserEntity;
 import com.garret.dreammoa.domain.repository.ParticipantRepository;
-import com.garret.dreammoa.domain.service.FileService;
+import com.garret.dreammoa.domain.service.file.FileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

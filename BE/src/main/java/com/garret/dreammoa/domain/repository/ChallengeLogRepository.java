@@ -21,4 +21,6 @@ public interface ChallengeLogRepository extends JpaRepository<ChallengeLogEntity
     boolean existsByUser_IdAndChallenge_ChallengeIdAndRecordAt(Long userId, Long challengeId, LocalDate recordAt);
     @Query(value = "SELECT COALESCE(SUM(screen_time), 0) FROM tb_challenge_log", nativeQuery = true)
     Integer findTotalScreenTime();
+    List<ChallengeLogEntity> findByUserAndChallenge(UserEntity user, ChallengeEntity challenge);
+
 }

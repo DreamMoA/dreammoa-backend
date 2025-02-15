@@ -1,4 +1,4 @@
-package com.garret.dreammoa.domain.service;
+package com.garret.dreammoa.domain.service.user;
 
 import com.garret.dreammoa.domain.dto.user.CustomUserDetails;
 import com.garret.dreammoa.domain.model.UserEntity;

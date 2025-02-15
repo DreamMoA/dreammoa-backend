@@ -6,19 +6,14 @@ import com.garret.dreammoa.domain.dto.main.response.TotalScreenTimeResponseDto;
 import com.garret.dreammoa.domain.model.BoardEntity;
 import com.garret.dreammoa.domain.repository.BoardRepository;
 import com.garret.dreammoa.domain.repository.UserRepository;
-import com.garret.dreammoa.domain.service.TotalScreenTimeService;
+import com.garret.dreammoa.domain.service.user.TotalScreenTimeService;
 import com.garret.dreammoa.domain.service.challenge.ChallengeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -34,8 +29,7 @@ public class MainController {
 
     @GetMapping("/total-screen-time")
    public ResponseEntity<TotalScreenTimeResponseDto> getTotalScreenTime(){
-        TotalScreenTimeResponseDto responseDto = totalScreenTimeService.getTotalScreenTimeDto();
-        return ResponseEntity.ok(responseDto);
+        return ResponseEntity.ok(totalScreenTimeService.getTotalScreenTimeDto());
    }
 
     @GetMapping("/top-viewed")
