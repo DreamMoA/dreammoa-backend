@@ -170,11 +170,12 @@ public class ParticipantService {
     }
 
 
-    public boolean existsByChallengeAndUser(ChallengeEntity challenge, UserEntity user) {
+    public Boolean existsByChallengeAndUser(ChallengeEntity challenge, UserEntity user) {
         return participantRepository.existsByChallengeAndUser(challenge, user);
     }
 
     public List<ParticipantEntity> findByUser(UserEntity currentUser) {
         return participantRepository.findByUser(currentUser);
     }
+
 }

@@ -153,8 +153,10 @@ public class FileService {
     @Transactional
     public void deleteThumbnail(Long challengeId){
         List<FileEntity> files = fileRepository.findByRelatedIdAndRelatedType(challengeId, RelatedType.CHALLENGE);
-        amazonS3Client.deleteObject(bucketName,  files.get(0).getFilePath());
-        fileRepository.delete(files.get(0));
+        if(!files.isEmpty()){
+            amazonS3Client.deleteObject(bucketName,  files.get(0).getFilePath());
+            fileRepository.delete(files.get(0));
+        }
     }
 
     public Optional<FileEntity> getProfilePicture(Long userId) {
