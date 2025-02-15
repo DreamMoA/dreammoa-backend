@@ -18,7 +18,7 @@ public class TotalScreenTimeService {
 
     private static final String TOTAL_SCREEN_TIME_KEY = "totalScreenTime";
 
-    @Scheduled(fixedRate = 600000) // 600,000ms 10 = 10분
+    @Scheduled(fixedRate = 30000) // 30초
     public void calculateAndStoreTotalScreenTime(){
         Integer totalScreenTime = challengeLogRepository.findTotalScreenTime();
         if(totalScreenTime == null) {
