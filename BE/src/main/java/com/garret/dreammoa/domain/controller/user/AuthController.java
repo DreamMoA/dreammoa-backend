@@ -2,21 +2,18 @@ package com.garret.dreammoa.domain.controller.user;
 
 
 import com.garret.dreammoa.domain.dto.user.CustomUserDetails;
-import com.garret.dreammoa.domain.dto.user.response.TokenResponse;
 import com.garret.dreammoa.domain.dto.user.request.LoginRequest;
-import com.garret.dreammoa.domain.service.UserService;
+import com.garret.dreammoa.domain.service.user.UserService;
 import com.garret.dreammoa.utils.JwtUtil;
-import com.garret.dreammoa.domain.model.FileEntity;
 import com.garret.dreammoa.domain.model.UserEntity;
 import com.garret.dreammoa.domain.repository.UserRepository;
-import com.garret.dreammoa.domain.service.FileService;
+import com.garret.dreammoa.domain.service.file.FileService;
 import com.garret.dreammoa.utils.CookieUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.*;
@@ -32,7 +29,6 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j

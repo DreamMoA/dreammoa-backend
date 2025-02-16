@@ -6,7 +6,7 @@ import com.garret.dreammoa.domain.dto.board.responsedto.BoardResponseDto;
 import com.garret.dreammoa.domain.dto.user.CustomUserDetails;
 import com.garret.dreammoa.domain.model.*;
 import com.garret.dreammoa.domain.repository.*;
-import com.garret.dreammoa.domain.service.FileService;
+import com.garret.dreammoa.domain.service.file.FileService;
 import com.garret.dreammoa.domain.service.embedding.EmbeddingService;
 import com.garret.dreammoa.domain.service.like.LikeService;
 import com.garret.dreammoa.domain.service.tag.TagService;

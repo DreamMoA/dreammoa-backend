@@ -4,7 +4,7 @@ import com.garret.dreammoa.config.oauth.OAuth2SuccessHandler;
 import com.garret.dreammoa.config.oauth.OAuth2UserCustomService;
 import com.garret.dreammoa.domain.repository.FileRepository;
 import com.garret.dreammoa.domain.repository.UserRepository;
-import com.garret.dreammoa.domain.service.CustomUserDetailsService;
+import com.garret.dreammoa.domain.service.user.CustomUserDetailsService;
 import com.garret.dreammoa.filter.JwtFilter;
 import com.garret.dreammoa.utils.JwtUtil;
 import jakarta.servlet.http.HttpServletResponse;

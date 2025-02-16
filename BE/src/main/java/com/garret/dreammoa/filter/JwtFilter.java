@@ -1,6 +1,6 @@
 package com.garret.dreammoa.filter;
 
-import com.garret.dreammoa.domain.service.CustomUserDetailsService;
+import com.garret.dreammoa.domain.service.user.CustomUserDetailsService;
 import com.garret.dreammoa.utils.JwtUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

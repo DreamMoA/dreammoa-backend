@@ -1,4 +1,4 @@
-package com.garret.dreammoa.domain.service;
+package com.garret.dreammoa.domain.service.user;
 
 import com.garret.dreammoa.domain.dto.dashboard.request.UpdateDeterminationRequest;
 import com.garret.dreammoa.domain.dto.dashboard.response.DeterminationResponse;
@@ -9,6 +9,8 @@ import com.garret.dreammoa.domain.model.FileEntity;
 import com.garret.dreammoa.domain.model.UserEntity;
 import com.garret.dreammoa.domain.repository.FileRepository;
 import com.garret.dreammoa.domain.repository.UserRepository;
+import com.garret.dreammoa.domain.service.file.FileService;
+import com.garret.dreammoa.domain.service.mail.EmailService;
 import com.garret.dreammoa.utils.JwtUtil;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;

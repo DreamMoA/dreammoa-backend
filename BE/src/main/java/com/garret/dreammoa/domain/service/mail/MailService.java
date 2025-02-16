@@ -1,4 +1,4 @@
-package com.garret.dreammoa.domain.service;
+package com.garret.dreammoa.domain.service.mail;
 
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;

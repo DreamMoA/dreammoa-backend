@@ -1,17 +1,13 @@
-package com.garret.dreammoa.domain.service;
+package com.garret.dreammoa.domain.service.dashboard;
 
 
-import com.garret.dreammoa.domain.dto.dashboard.request.StudyHistoryDto;
-import com.garret.dreammoa.domain.dto.dashboard.request.UpdateDeterminationRequest;
 import com.garret.dreammoa.domain.dto.dashboard.response.*;
 import com.garret.dreammoa.domain.model.ChallengeLogEntity;
-import com.garret.dreammoa.domain.model.FileEntity;
 import com.garret.dreammoa.domain.model.UserEntity;
 import com.garret.dreammoa.domain.repository.ChallengeLogRepository;
 import com.garret.dreammoa.domain.repository.FileRepository;
 import com.garret.dreammoa.domain.repository.UserRepository;
 import com.garret.dreammoa.utils.JwtUtil;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -19,7 +15,6 @@ import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
