@@ -1,17 +1,14 @@
 package com.garret.dreammoa.domain.controller.dashboard;
 
-import com.garret.dreammoa.domain.dto.dashboard.request.StudyHistoryDto;
-import com.garret.dreammoa.domain.dto.dashboard.request.UpdateDeterminationRequest;
 import com.garret.dreammoa.domain.dto.dashboard.response.*;
-import com.garret.dreammoa.domain.service.DashboardService;
-import com.garret.dreammoa.domain.service.UserService;
+import com.garret.dreammoa.domain.service.dashboard.DashboardService;
+import com.garret.dreammoa.domain.service.user.UserService;
 import com.garret.dreammoa.domain.service.challenge.ChallengeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import com.garret.dreammoa.domain.dto.dashboard.request.*;
 
 @RestController
 @RequestMapping("/dashboard")

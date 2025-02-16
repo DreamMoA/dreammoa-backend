@@ -1,4 +1,4 @@
-package com.garret.dreammoa.domain.service;
+package com.garret.dreammoa.domain.service.report;
 
 import com.garret.dreammoa.domain.dto.report.request.ReportRequestDto;
 import com.garret.dreammoa.domain.dto.report.response.ReportDetailResponseDto;

@@ -3,11 +3,8 @@ package com.garret.dreammoa.domain.controller.file;
 
 import com.garret.dreammoa.domain.model.FileEntity;
 import com.garret.dreammoa.domain.model.FileEntity.RelatedType;
-import com.garret.dreammoa.domain.repository.FileRepository;
-import com.garret.dreammoa.domain.service.FileService;
-import lombok.RequiredArgsConstructor;
+import com.garret.dreammoa.domain.service.file.FileService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -22,7 +19,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 

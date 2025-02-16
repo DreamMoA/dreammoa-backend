@@ -1,9 +1,7 @@
-package com.garret.dreammoa.domain.service;
+package com.garret.dreammoa.domain.service.user;
 
 import com.garret.dreammoa.domain.dto.main.response.TotalScreenTimeResponseDto;
 import com.garret.dreammoa.domain.repository.ChallengeLogRepository;
-import com.garret.dreammoa.domain.repository.ChallengeRepository;
-import com.garret.dreammoa.domain.service.challenge.ChallengeLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -20,7 +18,7 @@ public class TotalScreenTimeService {
 
     private static final String TOTAL_SCREEN_TIME_KEY = "totalScreenTime";
 
-    @Scheduled(fixedRate = 600000) // 600,000ms 10 = 10분
+    @Scheduled(fixedRate = 30000) // 30초
     public void calculateAndStoreTotalScreenTime(){
         Integer totalScreenTime = challengeLogRepository.findTotalScreenTime();
         if(totalScreenTime == null) {
