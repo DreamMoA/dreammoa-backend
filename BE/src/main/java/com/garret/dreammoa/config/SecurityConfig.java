@@ -116,6 +116,7 @@ public class SecurityConfig {
                                         "/total-screen-time", "/login","/", "/error", "/refresh", "/top-viewed", "/openvidu/**", "/join","/email-find","/pw-find","/openvidu/**",
                                         "/send-verification-code", "/verify-email-code", "/check-email", "/check-nickname",
                                         "/challenges/*/info", "/challenges/invite/**",
+                                        // STT추가함
                                         "/tags", "/user-tags", "/stt-start", "/stt-stop")
                                 .permitAll()
                                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
