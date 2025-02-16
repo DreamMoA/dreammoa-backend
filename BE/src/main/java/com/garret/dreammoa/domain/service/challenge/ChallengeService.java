@@ -3,6 +3,7 @@ package com.garret.dreammoa.domain.service.challenge;
 import com.garret.dreammoa.domain.dto.challenge.requestdto.*;
 import com.garret.dreammoa.domain.dto.challenge.responsedto.*;
 import com.garret.dreammoa.domain.dto.dashboard.request.StudyHistoryDto;
+import com.garret.dreammoa.domain.dto.dashboard.response.ChallengeMonthlyDetailDto;
 import com.garret.dreammoa.domain.dto.dashboard.response.DashboardChallengeDto;
 import com.garret.dreammoa.domain.model.*;
 import com.garret.dreammoa.domain.repository.*;
@@ -596,6 +597,82 @@ public class ChallengeService {
         }
 
         return dashboardList;
+    }
+
+
+    public List<ChallengeMonthlyDetailDto> getMonthlyDetailsForChallenge(Long challengeId, int year, int month) {
+        UserEntity user = securityUtil.getCurrentUser();
+        long userId = user.getId();
+        LocalDate startDate = LocalDate.of(year, month, 1);
+        LocalDate endDate = startDate.with(TemporalAdjusters.lastDayOfMonth());
+
+        List<ChallengeLogEntity> logs = challengeLogRepository
+                .findByUser_IdAndChallenge_ChallengeIdAndRecordAtBetween(userId, challengeId, startDate, endDate);
+
+        return logs.stream()
+                .map(log -> ChallengeMonthlyDetailDto.builder()
+                        .recordAt(log.getRecordAt())
+                        .screenTime(log.getScreenTime() != null ? log.getScreenTime() : 0)
+                        .isSuccess(log.getIsSuccess() != null ? log.getIsSuccess() : false)
+                        .build())
+                .sorted(Comparator.comparing(ChallengeMonthlyDetailDto::getRecordAt))
+                .collect(Collectors.toList());
+    }
+
+    public List<DashboardChallengeDto> getTopChallengesForDay(int year, int month, int day) {
+        // 현재 로그인한 사용자 조회
+        UserEntity currentUser = securityUtil.getCurrentUser();
+        Long userId = currentUser.getId();
+        // 지정한 날짜 생성
+        LocalDate targetDay = LocalDate.of(year, month, day);
+
+        // 해당 날짜에 대한 학습 로그를 조회 (하루만 조회하기 위해 시작/종료를 같은 날로 설정)
+        List<ChallengeLogEntity> logs = challengeLogRepository
+                .findByUser_IdAndRecordAtBetween(userId, targetDay, targetDay);
+
+        // 챌린지별로 그룹핑하여 각 챌린지의 총 공부 시간(순공 + 화면 사용 시간) 계산
+        List<DashboardChallengeDto> dtos = logs.stream()
+                .collect(Collectors.groupingBy(log -> log.getChallenge().getChallengeId()))
+                .entrySet()
+                .stream()
+                .map(entry -> {
+                    Long challengeId = entry.getKey();
+                    List<ChallengeLogEntity> challengeLogs = entry.getValue();
+                    int totalPure = challengeLogs.stream()
+                            .mapToInt(log -> log.getPureStudyTime() != null ? log.getPureStudyTime() : 0)
+                            .sum();
+                    int totalScreen = challengeLogs.stream()
+                            .mapToInt(log -> log.getScreenTime() != null ? log.getScreenTime() : 0)
+                            .sum();
+                    // 전체 공부 시간 = 순공 + 화면 사용 시간
+                    int overallStudy = totalPure + totalScreen;
+                    // 챌린지 정보 (제목, 썸네일 등)는 첫번째 로그에서 가져옴
+                    String title = challengeLogs.get(0).getChallenge().getTitle();
+                    List<FileEntity> files = fileRepository.findByRelatedIdAndRelatedType(challengeId, FileEntity.RelatedType.CHALLENGE);
+                    String thumbnailUrl = (files != null && !files.isEmpty()) ? files.get(0).getFileUrl() : null;
+
+                    // DashboardChallengeDto에 화면 시간, 순공 시간 정보를 그대로 담음
+                    // (전체 공부 시간은 정렬을 위해 계산만 함)
+                    return DashboardChallengeDto.builder()
+                            .challengeId(challengeId)
+                            .title(title)
+                            .thumbnailUrl(thumbnailUrl)
+                            .totalPureStudyTime(totalPure)
+                            .totalScreenTime(totalScreen)
+                            // 필요하다면 overallStudy 필드를 추가할 수 있음
+                            .build();
+                })
+                .sorted((a, b) -> Integer.compare(
+                        (b.getTotalPureStudyTime() + b.getTotalScreenTime()),
+                        (a.getTotalPureStudyTime() + a.getTotalScreenTime())
+                ))
+                .collect(Collectors.toList());
+
+        // 상위 4개만 선택
+        if (dtos.size() > 4) {
+            return dtos.subList(0, 4);
+        }
+        return dtos;
     }
 }
 

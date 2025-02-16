@@ -107,4 +107,36 @@ public class DashboardController {
         }
         return dashboardService.getOverallStats(accessToken);
     }
+
+    @GetMapping("{challengeId}/monthly-details")
+    public ResponseEntity<List<ChallengeMonthlyDetailDto>> getMonthlyDetailsForChallenge(
+            @RequestHeader("Authorization") String accessToken,
+            @PathVariable Long challengeId,
+            @RequestParam int year,
+            @RequestParam int month) {
+
+        return ResponseEntity.ok(challengeService.getMonthlyDetailsForChallenge(challengeId, year, month));
+    }
+
+    @GetMapping("/top-challenges-for-day")
+    public ResponseEntity<List<DashboardChallengeDto>> getTopChallengesForDay(
+            @RequestParam int year,
+            @RequestParam int month,
+            @RequestParam int day) {
+        List<DashboardChallengeDto> dtos = challengeService.getTopChallengesForDay(year, month, day);
+        return ResponseEntity.ok(dtos);
+    }
+
+    @GetMapping("/daily-study")
+    public ResponseEntity<List<DailyStudyTimeDto>> getDailyStudyTime(
+            @RequestHeader("Authorization") String accessToken,
+            @RequestParam int year,
+            @RequestParam int month) {
+        if (accessToken.startsWith("Bearer ")) {
+            accessToken = accessToken.substring(7);
+        }
+        List<DailyStudyTimeDto> dailyStudyTimes = dashboardService.getDailyStudyTimeForMonth(accessToken, year, month);
+        return ResponseEntity.ok(dailyStudyTimes);
+    }
+
 }
