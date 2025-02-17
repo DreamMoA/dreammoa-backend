@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -170,12 +171,8 @@ public class DashboardService {
         Map<LocalDate, Integer> dailyTotals = logs.stream()
                 .collect(Collectors.groupingBy(
                         ChallengeLogEntity::getRecordAt,
-                        Collectors.summingInt(log -> {
-                            int pure = (log.getPureStudyTime() != null) ? log.getPureStudyTime() : 0;
-                            int screen = (log.getScreenTime() != null) ? log.getScreenTime() : 0;
-                            return pure + screen;
-                        })
-                ));
+                        Collectors.summingInt(log -> log.getScreenTime() != null ? log.getScreenTime() : 0)
+                        ));
 
         // 결과를 DTO 리스트로 변환하고 날짜순으로 정렬
         return dailyTotals.entrySet().stream()
@@ -183,7 +180,7 @@ public class DashboardService {
                         .recordAt(entry.getKey())
                         .totalStudyTime(entry.getValue())
                         .build())
-                .sorted((d1, d2) -> d1.getRecordAt().compareTo(d2.getRecordAt()))
+                .sorted(Comparator.comparing(DailyStudyTimeDto::getRecordAt))
                 .collect(Collectors.toList());
     }
 
