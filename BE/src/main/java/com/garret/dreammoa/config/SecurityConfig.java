@@ -1,4 +1,5 @@
 package com.garret.dreammoa.config;
+import com.garret.dreammoa.config.oauth.CustomOAuth2AuthorizationRequestResolver;
 import com.garret.dreammoa.config.oauth.OAuth2AuthorizationRequestBasedOnCookieRepository;
 import com.garret.dreammoa.config.oauth.OAuth2SuccessHandler;
 import com.garret.dreammoa.config.oauth.OAuth2UserCustomService;
@@ -22,6 +23,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -42,6 +44,7 @@ public class SecurityConfig {
     private final UserRepository userRepository;
     private final FileRepository fileRepository;
     private final FileProperties fileProperties;
+    private final ClientRegistrationRepository clientRegistrationRepository;
 
     @Bean
     public OAuth2SuccessHandler oAuth2SuccessHandler() {
@@ -74,7 +77,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, ClientRegistrationRepository clientRegistrationRepository) throws Exception {
         http
                 // CORS 설정
                 // CSRF 비활성화
@@ -129,9 +132,11 @@ public class SecurityConfig {
                 // 네이버로그인설정
                 // OAuth2 로그인 설정 (구글 + 네이버 + 카카오)
                 .oauth2Login(oauth2 -> oauth2
-                        .authorizationEndpoint(auth -> auth.authorizationRequestRepository(oAuth2AuthorizationRequestBasedOnCookieRepository()))
+                        .authorizationEndpoint(auth -> auth.authorizationRequestResolver(
+                                new CustomOAuth2AuthorizationRequestResolver(clientRegistrationRepository) // 여기서 각 도메인 뿌려줌
+                        ))
                         .userInfoEndpoint(userInfo -> userInfo.userService(oAuth2UserCustomService))
-                        .successHandler(oAuth2SuccessHandler()) // 로그인 성공 시 JWT 발급
+                        .successHandler(oAuth2SuccessHandler())
                 )
                 // JWT 필터
                 .addFilterBefore(new JwtFilter(jwtUtil, userDetailsService),
