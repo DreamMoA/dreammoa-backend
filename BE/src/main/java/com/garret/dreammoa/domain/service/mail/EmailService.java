@@ -52,7 +52,7 @@ public class EmailService {
           <!-- Header -->
           <tr>
             <td style="background-color: #252F3D; color: #ffffff; text-align: center; padding: 20px;">
-              <img src="https://dream-moa.s3.ap-northeast-2.amazonaws.com/dreammoalogo.png" width="75" height="45" alt="DreamMoa Logo" border="0" style="font-family: sans-serif; font-size: 15px; line-height: 140%; color: #555555;">
+              <img src="https://dream-moa.s3.ap-northeast-2.amazonaws.com/dreammoa.png" width="75" height="45" alt="DreamMoa Logo" border="0" style="font-family: sans-serif; font-size: 15px; line-height: 140%; color: #555555;">
               <br>
               <strong>소중한 꿈을 모아</strong>
             </td>

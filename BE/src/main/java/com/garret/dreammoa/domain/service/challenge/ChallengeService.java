@@ -142,7 +142,7 @@ public class ChallengeService {
         String thumbnail = (!files.isEmpty()) ? files.get(0).getFileUrl() : null;
 
         if (!authentication.isAuthenticated() || authentication instanceof AnonymousAuthenticationToken)
-            return ResponseEntity.ok(toResponseDto(challenge, "로그인하세요"));
+            return ResponseEntity.ok(toResponseDto(challenge, "참가"));
         UserEntity user = securityUtil.getCurrentUser();
         participantHistoryService.validateNotKicked(challenge, user); //강퇴 이력 조회
 
