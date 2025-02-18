@@ -1,4 +1,4 @@
-package com.example.openaitest.config;
+package com.garret.dreammoa.config.oauth;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;

@@ -81,4 +81,9 @@ public class OpenViduService {
             session.close();
         }
     }
+
+    public boolean isSessionInvalid(String sessionId) {
+        Session session = openVidu.getActiveSession(sessionId);
+        return Objects.isNull(session); // OpenVidu에서 세션을 찾을 수 없으면 `true`
+    }
 }

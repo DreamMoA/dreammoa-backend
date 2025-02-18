@@ -18,6 +18,7 @@ public class ChallengeInfoResponseDto {
     private LocalDateTime expireDate;
     private Boolean isActive;
     private List<String> tags;
+    private Integer standard;
     private String thumbnail;
     private String message;
 }

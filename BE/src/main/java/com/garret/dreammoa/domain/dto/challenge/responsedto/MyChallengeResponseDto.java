@@ -19,6 +19,7 @@ public class MyChallengeResponseDto {
     private Integer maxParticipants;
     @JsonProperty("isActive")
     private Boolean isActive;
+    private Integer standard;
     private List<String> tags;
     private String thumbnail;
 }
