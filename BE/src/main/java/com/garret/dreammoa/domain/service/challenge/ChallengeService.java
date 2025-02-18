@@ -380,7 +380,7 @@ public class ChallengeService {
                     .challengeId(challenge.getChallengeId())
                     .title(challenge.getTitle())
                     .thumbnail(thumbnail)
-                    .remainingDays(remainingDays)
+                    .remainingDays(remainingDays+1)
                     .build();
         }).collect(Collectors.toList());
     }
@@ -421,7 +421,7 @@ public class ChallengeService {
     public ResponseEntity<List<MyChallengeResponseDto>> getTagChallenges(String tags) {
 
         // 페이징 설정
-        Pageable pageable = PageRequest.of(0, 8);
+        Pageable pageable = PageRequest.of(0, 30);
 
         List<String> tagList = (tags == null || tags.isBlank()) ? Collections.emptyList() :
                 Arrays.stream(tags.split("\\s*,\\s*"))
@@ -445,7 +445,7 @@ public class ChallengeService {
     public ResponseEntity<SearchChallengeResponseDto> searchChallenges(String tags, String keyword) {
 
         LocalDateTime now = LocalDateTime.now();
-        Pageable pageable = PageRequest.of(0, 8);
+        Pageable pageable = PageRequest.of(0, 30);
 
         List<String> tagList = (tags == null || tags.isBlank()) ? Collections.emptyList() :
                 Arrays.stream(tags.split("\\s*,\\s*"))
@@ -479,7 +479,7 @@ public class ChallengeService {
 
     public ResponseEntity<PagedChallengeResponseDto<MyChallengeResponseDto>> getAllChallenges(String tags, String keyword, int page) {
 
-        Pageable pageable = PageRequest.of(page, 8);
+        Pageable pageable = PageRequest.of(page, 30);
 
         // tags가 null 또는 빈 문자열이면 빈 리스트 처리
         List<String> tagList = (tags == null || tags.isBlank()) ? Collections.emptyList() :
