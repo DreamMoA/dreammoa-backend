@@ -75,7 +75,7 @@ public class BadgeService {
         String thumbnailUrl = (files != null && !files.isEmpty()) ? files.get(0).getFileUrl() : null;
 
         boolean alreadyAwarded = userBadgeRepository.existsByUserAndBadge_Name(user, challenge.getTitle());
-        if(Objects.nonNull(alreadyAwarded)){
+        if(!alreadyAwarded){
             BadgeEntity badge = BadgeEntity.builder()
                     .name(challenge.getTitle())
                     .description(challenge.getTitle() + " 첼린지를 성공함")
