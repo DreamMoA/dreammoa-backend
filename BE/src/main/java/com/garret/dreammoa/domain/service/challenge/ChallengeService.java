@@ -197,14 +197,18 @@ public class ChallengeService {
         // 참여자 정보 조회 및 상태 업데이트
         participantService.activateParticipant(user, challenge);
 
-        // ✅ OpenVidu 세션 확인 및 생성
-        String sessionId = openViduService.getOrCreateSession(challengeId.toString());
+        // ✅ 기존 세션 ID 확인
+        String sessionId = challenge.getSessionId();
 
-        // ✅ 세션 ID를 챌린지에 저장
-        if(Objects.isNull(challenge.getSessionId())){
+        // ✅ 세션 유효성 검사: OpenVidu에 활성화된 세션이 있는지 확인
+        if (Objects.isNull(sessionId) || openViduService.isSessionInvalid(sessionId)) {
+            log.info("⚠️ 기존 세션이 유효하지 않음. 새로운 세션을 생성합니다.");
+            sessionId = openViduService.getOrCreateSession(challengeId.toString());
             challenge.setSessionId(sessionId);
             challenge.setIsActive(true);
             challengeRepository.save(challenge);
+        } else {
+            log.info("✅ 기존 OpenVidu 세션 유지: {}", sessionId);
         }
 
         // ✅ 연결 토큰 생성
@@ -518,6 +522,7 @@ public class ChallengeService {
                 .currentParticipants(challenge.getChallengeParticipants().size())
                 .maxParticipants(challenge.getMaxParticipants())
                 .thumbnail(thumbnailUrl)
+                .standard(challenge.getStandard())
                 .build();
     }
     private ChallengeInfoResponseDto toResponseDto(ChallengeEntity challenge, String message) {
@@ -537,6 +542,7 @@ public class ChallengeService {
                 .isActive(challenge.getIsActive())
                 .tags(tagNames)
                 .thumbnail(thumbnailUrl)
+                .standard(challenge.getStandard())
                 .currentParticipants(challenge.getChallengeParticipants().size())
                 .maxParticipants(challenge.getMaxParticipants())
                 .message(message)
