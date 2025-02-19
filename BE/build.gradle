@@ -28,7 +28,6 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
-	implementation 'org.springframework.boot:spring-boot-starter-websocket'
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 	implementation 'io.swagger.core.v3:swagger-annotations:2.2.25'
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
@@ -59,6 +58,11 @@ dependencies {
 	implementation platform('com.google.cloud:libraries-bom:26.33.0')
 	implementation 'com.google.cloud:google-cloud-speech'
 	implementation 'com.google.protobuf:protobuf-java:3.23.4' // ✅ Protobuf 라이브러리 추가
+
+	implementation 'org.springframework.boot:spring-boot-starter-websocket' // ✅ WebSocket 기능 추가
+	implementation 'org.springframework:spring-websocket' // ✅ WebSocket API 지원
+	implementation 'org.springframework:spring-messaging' // ✅ WebSocket STOMP 메시징 지원
+
 
 }
 

@@ -109,7 +109,7 @@ public class SecurityConfig {
                                         "/webjars/**",      // Swagger가 사용하는 정적 리소스
                                         "/swagger-resources/**"
                                 ).permitAll()
-
+                                .requestMatchers("/stt-websocket").permitAll()
                                 // 특정 GET 요청 허용 (글 목록 조회만)
                                 .requestMatchers(HttpMethod.GET, "/boards").permitAll()
                                 .requestMatchers(HttpMethod.GET, "api/likes/**").permitAll()
