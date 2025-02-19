@@ -342,6 +342,8 @@ public class BoardServiceImpl implements BoardService {
             throw new RuntimeException("본인이 작성한 글만 삭제할 수 있습니다.");
         }
 
+        commentRepository.deleteChildCommentsByBoard(postId);
+
         commentRepository.deleteByBoard(board);
 
         likeRepository.deleteByBoard(board);
