@@ -27,6 +27,19 @@ public interface CommentRepository extends JpaRepository<CommentEntity, Long> {
 
     @Modifying
     @Transactional
+    @Query(value = """
+    DELETE c FROM tb_comment c
+    JOIN (SELECT comment_id 
+          FROM tb_comment 
+          WHERE parent_comment_id IS NOT NULL 
+          AND post_id = :boardId) AS subquery
+    ON c.comment_id = subquery.comment_id
+    """, nativeQuery = true)
+    void deleteChildCommentsByBoard(@Param("boardId") Long boardId);
+
+
+    @Modifying
+    @Transactional
     @Query("DELETE FROM CommentEntity c WHERE c.board = :board")
     void deleteByBoard(@Param("board") BoardEntity board);
 }
