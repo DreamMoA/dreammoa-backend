@@ -119,7 +119,7 @@ public class SecurityConfig {
                                         "/total-screen-time", "/login","/", "/error", "/refresh", "/top-viewed", "/openvidu/**", "/join","/email-find","/pw-find","/openvidu/**",
                                         "/send-verification-code", "/verify-email-code", "/check-email", "/check-nickname",
                                         "/challenges/*/info", "/challenges/invite/**","/user-tag",
-                                        "/tags", "/user-tags", "/stt-start", "/stt-stop", "/gpt-summary")
+                                        "/tags", "/user-tags", "/stt/speech-to-text", "/gpt-summary")
                                 .permitAll()
                                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                                 .requestMatchers("/files/**").permitAll()
@@ -152,7 +152,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173", "http://dreammoa.duckdns.org", "http://3.38.214.23")); // React 개발 서버 도메인
+        config.setAllowedOrigins(List.of("http://localhost:5173", "http://dreammoa.duckdns.org", "https://dreammoa.duckdns.org", "http://3.38.214.23")); // React 개발 서버 도메인
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")); // 허용할 HTTP 메서드
         config.setAllowedHeaders(List.of("*")); // 모든 헤더 허용
         config.setAllowCredentials(true); // 인증 정보 허용
