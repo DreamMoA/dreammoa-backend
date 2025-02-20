@@ -2,12 +2,18 @@ package com.garret.dreammoa.domain.controller.gpt;
 
 import com.garret.dreammoa.domain.dto.gpt.requestdto.ChatGPTRequest;
 import com.garret.dreammoa.domain.dto.gpt.responsedto.ChatGPTResponse;
+import com.garret.dreammoa.domain.service.stt.SpeechService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 @RestController
 public class CustomBotController {
@@ -131,4 +137,8 @@ public class CustomBotController {
             return "요약 실패: OpenAI API 응답이 올바르지 않습니다.";
         }
     }
+
+
+
+
 }
